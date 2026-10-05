@@ -21,7 +21,8 @@ header{background:#04123f;color:var(--gold);padding:12px 18px;border-bottom:3px 
 header h1{font-size:17px;margin:0;flex:1;font-weight:700}
 header small{opacity:.75}
 .menugrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px;position:relative}
-.menugrid button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border:0;background:var(--gold);color:#04123f;padding:10px 2px;border-radius:12px;cursor:pointer;font-weight:600;font-size:10.5px;position:relative;min-height:72px;line-height:1.3}
+.menugrid button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border:0;background:var(--gold);color:#04123f;padding:10px 2px;border-radius:12px;cursor:pointer;font-weight:600;font-size:10.5px;position:relative;min-height:72px;line-height:1.3;overflow:hidden}
+.ribbon{position:absolute;top:8px;left:-24px;background:#c0392b;color:#fff;font-size:8px;padding:2px 24px;transform:rotate(-45deg);z-index:2}
 .menugrid button .ic{width:20px;height:20px}
 .menugrid button .ic svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.6}
 main{max-width:860px;margin:0 auto;padding:16px;padding-bottom:78px;display:flex;flex-direction:column;min-height:calc(100vh - 120px)}
@@ -56,8 +57,23 @@ body.no-bgimg{background-image:none!important;background-color:var(--bg)}
 .modalbox{background:var(--card);border-radius:14px;max-width:480px;width:100%;max-height:85vh;overflow-y:auto;padding:20px 18px 18px;position:relative}
 .modalbox h3{margin-top:0}
 .modalclose{position:absolute;top:10px;left:10px;background:none;border:0;font-size:20px;cursor:pointer;color:var(--ink);line-height:1}
+.msgrow{display:flex;gap:6px;margin-bottom:10px;align-items:flex-end}
+.msgrow.me{justify-content:flex-start}
+.msgrow.other{justify-content:flex-end}
+.bubble{max-width:72%;padding:6px 10px 5px;border-radius:12px}
+.bubble.me{background:#04123f;color:#fff;border-bottom-left-radius:3px}
+.bubble.other{background:var(--card);border:1px solid var(--line);border-bottom-right-radius:3px}
+.bubble .bname{font-size:12px;font-weight:700;margin-bottom:2px;color:var(--gold)}
+.bubble.other .bname{color:#04123f}
+.bubble .btext{font-size:13px;word-break:break-word}
+.bubble .btime{font-size:10px;opacity:.7;text-align:left;margin-top:3px}
+.datechip{text-align:center;margin:10px 0;position:sticky;top:0;z-index:3}
+.datechip span{background:#04123f;color:var(--gold);padding:3px 12px;border-radius:99px;font-size:11px}
+.chatbar{position:fixed;left:0;right:0;bottom:54px;max-width:860px;margin:0 auto;background:var(--card);border-top:1px solid var(--line);padding:8px 10px;display:flex;align-items:center;gap:4px;z-index:5}
+.chatbar input{margin:0;flex:1}
 .igrid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px}
-.igcell{position:relative;aspect-ratio:1/1;overflow:hidden;cursor:pointer}
+.igcell{position:relative;aspect-ratio:1/1;overflow:hidden;cursor:pointer;border-radius:8px;border:2px solid var(--gold)}
+@media (max-width:640px){.ig-reply,.chat-reply{display:none}}
 .igcell img{width:100%;height:100%;object-fit:cover;display:block}
 .igframe{position:relative;width:100%;aspect-ratio:1/1;background:#000;overflow:hidden}
 .igframe img{width:100%;height:100%;object-fit:contain;display:block}
@@ -66,10 +82,11 @@ body.no-bgimg{background-image:none!important;background-color:var(--bg)}
 .igdots{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);display:flex;gap:4px}
 .igdots span{width:6px;height:6px;border-radius:99px;background:rgba(255,255,255,.5)}
 .igdots span.on{background:#fff}
-.bookgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.bookcard{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 4px;text-align:center;cursor:pointer}
-.bicon{font-size:28px}
-.btitle{font-size:12px;margin-top:4px}
+.bookgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.bookcard{position:relative;background:#04123f;border-radius:14px 4px 4px 14px;aspect-ratio:3/4;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:2px 3px 6px rgba(0,0,0,.3);padding:10px}
+.bookcard::after{content:"";position:absolute;right:7px;top:10px;bottom:10px;width:6px;background-image:radial-gradient(circle,#fff 2px,transparent 2.5px);background-size:6px 14px;background-repeat:repeat-y;opacity:.55}
+.bicon{display:none}
+.btitle{background:var(--gold);color:#04123f;font-size:11px;font-weight:700;padding:10px 6px;border-radius:4px;text-align:center;width:75%}
 </style>
 </head>
 <body>
@@ -93,9 +110,9 @@ qc:[],tasks:[],shifts:[],ann:[],customers:["شرکت نمونه"]};
 let S,me=null,tab="home",q="";
 try{S=JSON.parse(localStorage.getItem("qcdb"))||D0}catch(e){S=D0}
 S.customers=S.customers||[];S.posts=S.posts||[];S.msgs=S.msgs||[];S.trainings=S.trainings||[];S.nc=S.nc||[];S.chart=S.chart||{};
-S.announcement=S.announcement||null;S.occasion=S.occasion||null;S.groups=S.groups||[];S.gmsgs=S.gmsgs||[];S.reads=S.reads||{};S.suggestions=S.suggestions||[];S.suggReads=S.suggReads||{};S.complaints=S.complaints||[];S.complaintSeen=S.complaintSeen||{};
+S.announcement=S.announcement||null;S.occasion=S.occasion||null;S.groups=S.groups||[];S.gmsgs=S.gmsgs||[];S.reads=S.reads||{};S.suggestions=S.suggestions||[];S.suggReads=S.suggReads||{};S.complaints=S.complaints||[];S.complaintSeen=S.complaintSeen||{};S.taskReads=S.taskReads||{};S.shiftReceipts=S.shiftReceipts||{};
 S.perms.qcgram=S.perms.qcgram||["manager","supervisor"];S.perms.train=S.perms.train||["manager","supervisor"];S.perms.group=S.perms.group||["manager","supervisor","senior"];S.perms.complaint=S.perms.complaint||["manager","supervisor"];S.perms.nc=S.perms.nc||["manager","supervisor"];S.perms.ncresponder=S.perms.ncresponder||["supervisor","senior","expert"];S.perms.shiftconfirm=S.perms.shiftconfirm||["manager","supervisor","senior"];
-const KEYS=["users","customers","perms","ann","qc","tasks","shifts","msgs","posts","trainings","nc","chart","announcement","occasion","groups","gmsgs","reads","suggestions","suggReads","complaints","complaintSeen"];
+const KEYS=["users","customers","perms","ann","qc","tasks","shifts","msgs","posts","trainings","nc","chart","announcement","occasion","groups","gmsgs","reads","suggestions","suggReads","complaints","complaintSeen","taskReads","shiftReceipts"];
 const SUPABASE_URL="https://rmowptvcexryfaagdyzo.supabase.co";
 const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJtb3dwdHZjZXhyeWZhYWdkeXpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA4MTk0MjAsImV4cCI6MjEwNjM5NTQyMH0.LCVWMxOh04g5xlXiffS52Cydsfn9nEHsj344PjYQImY";
 let sb=null,DBSTATE="nodb";
@@ -120,7 +137,7 @@ async function loadFromDb(){
  if(error){DBSTATE="error";return}
  (data||[]).forEach(row=>{if(row.value!==undefined&&row.value!==null)S[row.key]=row.value});
  S.customers=S.customers||[];S.posts=S.posts||[];S.msgs=S.msgs||[];S.trainings=S.trainings||[];S.nc=S.nc||[];S.chart=S.chart||{};
- S.announcement=S.announcement||null;S.occasion=S.occasion||null;S.groups=S.groups||[];S.gmsgs=S.gmsgs||[];S.reads=S.reads||{};S.suggestions=S.suggestions||[];S.suggReads=S.suggReads||{};S.complaints=S.complaints||[];S.complaintSeen=S.complaintSeen||{};
+ S.announcement=S.announcement||null;S.occasion=S.occasion||null;S.groups=S.groups||[];S.gmsgs=S.gmsgs||[];S.reads=S.reads||{};S.suggestions=S.suggestions||[];S.suggReads=S.suggReads||{};S.complaints=S.complaints||[];S.complaintSeen=S.complaintSeen||{};S.taskReads=S.taskReads||{};S.shiftReceipts=S.shiftReceipts||{};
  S.ann=S.ann||[];S.qc=S.qc||[];S.tasks=S.tasks||[];S.shifts=S.shifts||[];
  S.users=(S.users&&S.users.length)?S.users:D0.users;S.perms=S.perms||D0.perms;
  S.perms.qcgram=S.perms.qcgram||["manager","supervisor"];S.perms.train=S.perms.train||["manager","supervisor"];S.perms.group=S.perms.group||["manager","supervisor","senior"];S.perms.complaint=S.perms.complaint||["manager","supervisor"];S.perms.nc=S.perms.nc||["manager","supervisor"];S.perms.ncresponder=S.perms.ncresponder||["supervisor","senior","expert"];S.perms.shiftconfirm=S.perms.shiftconfirm||["manager","supervisor","senior"];
@@ -149,15 +166,45 @@ const uname=id=>(S.users.find(u=>u.id==id)||{}).name||"—";
 const nid=()=>Date.now()*1000+Math.floor(Math.random()*1000);
 const TABS=()=>[["qc","اطلاعات کیفی",`<svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg>`],["tasks","کارها و وظایف",`<svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/><path d="M4 6l1.5 1.5L8 5"/></svg>`],["shift","تحویل شیفت‌ها",`<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="1.5"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>`],["train","آموزش‌ها",`<svg viewBox="0 0 24 24"><path d="M4 5c3-1.5 6-1.5 8 0v14c-2-1.5-5-1.5-8 0V5z"/><path d="M20 5c-3-1.5-6-1.5-8 0v14c2-1.5 5-1.5 8 0V5z"/></svg>`],["nc","عدم انطباق‌ها",`<svg viewBox="0 0 24 24"><path d="M12 3l10 18H2L12 3z"/><path d="M12 10v4"/><circle cx="12" cy="17" r="0.6" fill="currentColor"/></svg>`],["suggestions","انتقادات و پیشنهادات",`<svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 2a6 6 0 00-3 11c.6.5 1 1.2 1 2h4c0-.8.4-1.5 1-2a6 6 0 00-3-11z"/></svg>`],["complaints","شکایات",`<svg viewBox="0 0 24 24"><path d="M6 3v18M6 4h12l-2 3.5 2 3.5H6"/></svg>`],...(me.role=="manager"?[["admin","مدیریت سامانه",`<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>`]]:[])];
 
+const SECQS=["نام اولین مدرسه‌ی شما؟","نام حیوان خانگی اولتان؟","شهر محل تولد شما؟","نام بهترین دوست دوران کودکی‌تان؟"];
 function login(){
  document.body.classList.add("no-bgimg");
  $("#app").innerHTML=`<div class="login"><div class="top"><img src="${LOGO}" style="width:70px;height:auto;margin-bottom:8px"><h2>سامانه کنترل کیفیت</h2><p style="margin:2px 0 6px;font-size:13px;opacity:.85">تعهد به کیفیت، در هر قدم</p><small>برای ورود، نام کاربری و رمز عبور را وارد کنید</small></div>
- <div class="card"><input id="lu" placeholder="نام کاربری" autocomplete="username"><input id="lp" type="password" placeholder="رمز عبور" autocomplete="current-password">
- <div class="err" id="le"></div><button class="btn" style="width:100%;background:var(--gray)" id="lb">ورود</button></div></div>`;
- $("#lb").onclick=()=>{const u=S.users.find(x=>x.user==$("#lu").value.trim()&&x.pass==$("#lp").value);
+ <div class="card"><input id="lu" placeholder="نام کاربری" autocomplete="username">
+ <div style="position:relative"><input id="lp" type="password" placeholder="رمز عبور" autocomplete="current-password" style="padding-left:38px"><button type="button" id="lpeye" style="position:absolute;left:6px;top:7px;background:none;border:0;cursor:pointer;font-size:16px">👁</button></div>
+ <div class="err" id="le"></div><button class="btn" style="width:100%;background:var(--gray)" id="lb">ورود</button>
+ <p style="text-align:center;margin-top:10px"><a href="#" id="lforgot" style="color:#04123f;font-size:13px">رمز عبور را فراموش کرده‌اید؟</a></p>
+ <div id="lfbox"></div></div></div>`;
+ $("#lpeye").onclick=()=>{const p=$("#lp");p.type=p.type=="password"?"text":"password"};
+ $("#lb").onclick=()=>{const u=S.users.find(x=>x.user==$("#lu").value.trim());
   if(!u)return $("#le").textContent="نام کاربری یا رمز عبور اشتباه است.";
+  if(u.locked)return $("#le").textContent="حساب شما به‌دلیل ورود اشتباه مکرر قفل شده؛ با مدیر تماس بگیرید.";
   if(!u.on)return $("#le").textContent="حساب شما غیرفعال شده است. با مدیر تماس بگیرید.";
+  if(u.pass!=$("#lp").value){
+   u.failedAttempts=(u.failedAttempts||0)+1;
+   if(u.failedAttempts>=3){u.locked=true;save(["users"]);return $("#le").textContent="رمز اشتباه بود و حساب شما قفل شد؛ با مدیر تماس بگیرید."}
+   save(["users"]);return $("#le").textContent="نام کاربری یا رمز عبور اشتباه است.";
+  }
+  u.failedAttempts=0;save(["users"]);
   me=u;tab="home";shell()};
+ $("#lforgot").onclick=(e)=>{e.preventDefault();openForgotBox()};
+}
+function openForgotBox(){
+ $("#lfbox").innerHTML=`<div class="card" style="margin-top:10px"><input id="fu" placeholder="نام کاربری"><button class="btn sm" id="fub">ادامه</button><div class="err" id="fue"></div></div>`;
+ $("#fub").onclick=()=>{const u=S.users.find(x=>x.user==$("#fu").value.trim());
+  if(!u||!u.secQ){$("#fue").textContent="این کاربر یا سوال امنیتی تعریف‌شده پیدا نشد.";return}
+  $("#lfbox").innerHTML=`<div class="card" style="margin-top:10px"><p class="meta">${esc(SECQS[u.secQ])}</p><input id="fa" placeholder="پاسخ شما"><button class="btn sm" id="fab">تأیید</button><div class="err" id="fae"></div></div>`;
+  $("#fab").onclick=()=>{
+   if((u.secA||"").trim()!=$("#fa").value.trim()){$("#fae").textContent="پاسخ درست نیست.";return}
+   $("#lfbox").innerHTML=`<div class="card" style="margin-top:10px"><input type="password" id="fp1" placeholder="رمز جدید"><input type="password" id="fp2" placeholder="تکرار رمز جدید"><button class="btn sm" id="fpb">ثبت رمز جدید</button><div class="err" id="fpe"></div></div>`;
+   $("#fpb").onclick=()=>{const p1=$("#fp1").value,p2=$("#fp2").value;
+    if(!p1||p1.length<4){$("#fpe").textContent="رمز باید حداقل ۴ کاراکتر باشد.";return}
+    if(p1!=p2){$("#fpe").textContent="تکرار رمز مطابقت ندارد.";return}
+    u.pass=p1;u.locked=false;u.failedAttempts=0;save(["users"]);
+    $("#lfbox").innerHTML='<p class="meta" style="color:var(--ok)">رمز با موفقیت تغییر کرد؛ حالا وارد شوید.</p>';
+   };
+  };
+ };
 }
 function shell(){
  document.body.classList.remove("no-bgimg");
@@ -172,7 +219,7 @@ function shell(){
  </div>`;
  $("#bblo").onclick=()=>{me=null;login()};
  $("#pf").onchange=async()=>{const f=$("#pf").files[0];if(!f)return;const url=await uploadImage(f);me.photo=url;save("users");shell()};
- document.querySelectorAll(".bottombar [data-bt]").forEach(b=>b.onclick=()=>{tab=b.dataset.bt;shell()});
+ document.querySelectorAll(".bottombar [data-bt]").forEach(b=>b.onclick=()=>{tab=b.dataset.bt;if(tab=="qcgram"){window.__openPost=null;window.__piIdx=0}shell()});
  ({home,qc,tasks,shift,qcgram,colleague,train,nc,admin,profile,announce,occasion,suggestions,complaints})[tab]();
 }
 
@@ -191,7 +238,8 @@ function home(){
  const oc=S.occasion;
  const lp=S.posts[S.posts.length-1];
  $("#v").innerHTML=`<div class="menugrid">${TABS().map(t=>{const bn=t[0]=="suggestions"?suggUnread():t[0]=="complaints"?complaintsUnseen():0;
- return `<button data-t="${t[0]}"><span class="ic">${t[2]}</span>${t[1]}${bn?`<span style="position:absolute;top:2px;left:2px;background:#c0392b;color:#fff;font-size:9px;min-width:15px;height:15px;border-radius:99px;display:flex;align-items:center;justify-content:center;padding:0 3px">${bn}</span>`:""}</button>`}).join("")}</div>
+ const ribbon=t[0]=="tasks"&&tasksNewCount()>0?'<span class="ribbon">جدید</span>':"";
+ return `<button data-t="${t[0]}">${ribbon}<span class="ic">${t[2]}</span>${t[1]}${bn?`<span style="position:absolute;top:2px;left:2px;background:#c0392b;color:#fff;font-size:9px;min-width:15px;height:15px;border-radius:99px;display:flex;align-items:center;justify-content:center;padding:0 3px">${bn}</span>`:""}</button>`}).join("")}</div>
  <div class="card" id="anncard" style="cursor:pointer;margin-top:10px;padding:8px 14px"><h3 style="margin:0;font-size:13px">اعلانات</h3><p class="meta" style="margin:3px 0 0">${la?esc(la.text.slice(0,70)):"اعلانی ثبت نشده است"}</p></div>
  <div class="row" style="margin-top:8px;flex:1">
  <div class="card" id="gramcard" style="cursor:pointer;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px;overflow:hidden">${lp&&lp.images[0]?`<img src="${lp.images[0]}" style="width:100%;max-height:70%;object-fit:cover;border-radius:8px;margin-bottom:8px">`:'<div style="font-size:30px">📷</div>'}<h3 style="margin:8px 0 0;font-size:14px">QCgram</h3></div>
@@ -210,57 +258,98 @@ function occasion(){
  const oc=S.occasion;
  if(!oc){$("#v").innerHTML='<div class="card"><p class="meta">مناسبتی ثبت نشده است.</p></div>';return}
  const liked=(oc.likes||[]).includes(me.id);
- $("#v").innerHTML=`<div class="card">
- ${oc.image?`<img src="${oc.image}" style="width:100%;border-radius:8px;margin-bottom:8px;max-height:320px;object-fit:cover">`:""}
+ $("#v").innerHTML=`<div class="card" style="padding:0;overflow:hidden">
+ <div style="display:flex;gap:8px;align-items:center;padding:10px 12px">${avatar(oc.by)}<b>${esc(uname(oc.by))}</b><span class="meta">${fd(oc.at,1)}</span></div>
+ ${oc.image?`<div class="igframe"><img src="${oc.image}"></div>`:""}
+ <div style="padding:10px 12px">
+ <button class="btn sm ${liked?"":"alt"}" id="oclike">${liked?"❤️":"🤍"}</button> <span class="meta">${(oc.likes||[]).length} لایک</span>
  <p>${esc(oc.caption)}</p>
- <div class="meta">${esc(uname(oc.by))} · ${fd(oc.at,1)}</div>
- <button class="btn sm ${liked?"":"alt"}" id="oclike">${liked?"❤️ پسندیدم":"🤍 پسندیدن"} (${(oc.likes||[]).length})</button>
- <div style="margin-top:12px">${(oc.comments||[]).map(c=>`<div style="margin-top:8px;display:flex;gap:8px">${avatar(c.by)}<div><b style="font-size:13px">${esc(uname(c.by))}</b><div style="font-size:13px">${esc(c.text)}</div><div class="meta">${fd(c.at,1)}</div></div></div>`).join("")}</div>
- <div class="row" style="margin-top:10px">${["👍","❤️","😂","🎉","👏","🔥"].map(e=>`<button class="btn sm alt" data-emo="${e}" style="flex:0 0 auto;padding:6px 10px">${e}</button>`).join("")}</div>
- <div class="row"><input id="occm" placeholder="نظر شما..."><button class="btn sm" id="occb">ارسال</button></div>
- </div>`;
+ ${(oc.comments||[]).map(c=>`<div style="margin-top:8px;display:flex;gap:8px">${avatar(c.by)}<div><b style="font-size:13px">${esc(uname(c.by))}</b><div style="font-size:13px">${esc(c.text)}</div><div class="meta">${fd(c.at,1)}</div></div></div>`).join("")}
+ <div class="row" style="margin-top:10px"><input id="occm" placeholder="نظر شما..."><button class="btn sm" id="occb">ارسال</button></div>
+ </div></div>`;
  $("#oclike").onclick=()=>{oc.likes=oc.likes||[];const i=oc.likes.indexOf(me.id);if(i>-1)oc.likes.splice(i,1);else oc.likes.push(me.id);save("occasion");occasion()};
- document.querySelectorAll("[data-emo]").forEach(b=>b.onclick=()=>{$("#occm").value+=b.dataset.emo});
  $("#occb").onclick=()=>{const t=$("#occm").value.trim();if(!t)return;oc.comments=oc.comments||[];oc.comments.push({id:nid(),by:me.id,text:t,at:Date.now()});save("occasion");occasion()};
 }
 
 function qc(){
  const term=q.trim();
- const hits=term?S.qc.filter(r=>[r.c,r.p,r.o].some(f=>f&&f.includes(term))):[];
- $("#v").innerHTML=`<div class="card"><h3>جستجو</h3><div class="row"><input id="qs" placeholder="نام مشتری، نام محصول یا شماره سفارش (یا بخشی از آن)" value="${esc(q)}">${can("qc")?`<button class="btn sm" id="qnew" style="flex:0 0 auto">+ ثبت جدید</button>`:""}</div>
- ${term?(hits.length?hits.slice().reverse().map(r=>`<div class="card"><b>${esc(r.c)}</b> ${r.p?`<span class="tag">${esc(r.p)}</span>`:""} ${r.o?`<span class="tag">سفارش ${esc(r.o)}</span>`:""}<p>${esc(r.t)}</p><div class="meta">${esc(uname(r.by))} · ${fd(r.at,1)}</div></div>`).join(""):'<p class="meta">موردی پیدا نشد.</p>'):'<p class="meta">با نوشتن در کادر بالا، همه اطلاعات ثبت‌شده نمایش داده می‌شود.</p>'}</div>`;
- const qs=$("#qs");qs.oninput=()=>{q=qs.value;qc();const n=$("#qs");n.focus();n.setSelectionRange(q.length,q.length)};
+ const sel=window.__qcSel;
+ let sugg=[];
+ if(term&&!sel){
+  const vals=new Map();
+  S.qc.forEach(r=>{
+   if(r.c&&r.c.includes(term))vals.set("c|"+r.c,{type:"c",val:r.c});
+   if(r.p&&r.p.includes(term))vals.set("p|"+r.p,{type:"p",val:r.p});
+   if(r.o&&r.o.includes(term))vals.set("o|"+r.o,{type:"o",val:r.o});
+  });
+  sugg=[...vals.values()].slice(0,10);
+ }
+ let hits=[];
+ if(sel){
+  if(sel.type=="c")hits=S.qc.filter(r=>r.c==sel.val);
+  else if(sel.type=="p")hits=S.qc.filter(r=>r.p==sel.val);
+  else hits=S.qc.filter(r=>r.o==sel.val);
+ }
+ const groups={};hits.forEach(r=>{(groups[r.c]=groups[r.c]||[]).push(r)});
+ $("#v").innerHTML=`<div class="card"><h3>جستجو</h3><div class="row"><input id="qs" placeholder="نام مشتری، نام محصول یا شماره سفارش" value="${sel?esc(sel.val):esc(q)}">${sel?`<button class="btn sm alt" id="qclr" style="flex:0 0 auto">✕</button>`:""}${can("qc")?`<button class="btn sm" id="qnew" style="flex:0 0 auto">+ ثبت جدید</button>`:""}</div>
+ ${!sel&&term?(sugg.length?`<div class="card" style="padding:4px">${sugg.map(s=>`<div data-sug="${s.type}|${esc(s.val)}" style="padding:8px 6px;cursor:pointer;border-bottom:1px solid var(--line)">${s.type=="c"?"مشتری":s.type=="p"?"محصول":"سفارش"}: ${esc(s.val)}</div>`).join("")}</div>`:'<p class="meta">موردی پیدا نشد.</p>'):""}
+ ${sel?(Object.keys(groups).length?Object.entries(groups).map(([cust,items])=>`<div class="card"><b>${esc(cust)}</b>${items.map((r,i)=>`<div style="margin-top:8px;border-top:1px solid var(--line);padding-top:8px">${i+1}. ${r.p?`<span class="tag">${esc(r.p)}</span> `:""}${r.o?`<span class="tag">سفارش ${esc(r.o)}</span> `:""}${esc(r.t)} ${can("qc")?`<a href="#" data-editqc="${r.id}" style="color:var(--navy,#04123f)">ویرایش</a>`:""}</div>`).join("")}</div>`).join(""):'<p class="meta">موردی پیدا نشد.</p>'):(!term?'<p class="meta">برای جستجو، نام مشتری، محصول یا شماره سفارش را بنویسید.</p>':"")}
+ </div>`;
+ const qs=$("#qs");
+ if(!sel){qs.oninput=()=>{q=qs.value;qc();const n=$("#qs");n.focus();n.setSelectionRange(q.length,q.length)}}
+ else{qs.readOnly=true}
+ document.querySelectorAll("[data-sug]").forEach(d=>d.onclick=()=>{const [ty,...rest]=d.dataset.sug.split("|");window.__qcSel={type:ty,val:rest.join("|")};qc()});
+ const clr=document.getElementById("qclr");if(clr)clr.onclick=()=>{window.__qcSel=null;q="";qc()};
  if(can("qc"))$("#qnew").onclick=()=>openQcModal();
+ document.querySelectorAll("[data-editqc]").forEach(a=>a.onclick=(e)=>{e.preventDefault();openQcModal(+a.dataset.editqc)});
 }
-function openQcModal(){
- openModal(`<h3>ثبت اطلاعات کیفی جدید</h3><select id="mfc"><option value="">مشتری را انتخاب کنید (الزامی)</option>${S.customers.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join("")}<option value="__new">+ مشتری جدید…</option></select><input id="mfcn" placeholder="نام مشتری جدید" style="display:none"><input id="mfp" placeholder="محصول (اختیاری)"><input id="mfo" placeholder="سفارش (اختیاری)"><textarea id="mft" rows="3" placeholder="اطلاعات"></textarea><div class="err" id="mfe"></div><button class="btn" id="mfb">ثبت</button>`);
+function openQcModal(editId){
+ const rec=editId?S.qc.find(r=>r.id==editId):null;
+ openModal(`<h3>${rec?"ویرایش الزام":"ثبت اطلاعات کیفی جدید"}</h3><select id="mfc"><option value="">مشتری را انتخاب کنید (الزامی)</option>${S.customers.map(c=>`<option value="${esc(c)}" ${rec&&rec.c==c?"selected":""}>${esc(c)}</option>`).join("")}<option value="__new">+ مشتری جدید…</option></select><input id="mfcn" placeholder="نام مشتری جدید" style="display:none"><input id="mfp" placeholder="محصول (اختیاری)" value="${rec?esc(rec.p||""):""}"><input id="mfo" placeholder="سفارش (اختیاری)" value="${rec?esc(rec.o||""):""}"><textarea id="mft" rows="3" placeholder="اطلاعات">${rec?esc(rec.t):""}</textarea><div class="err" id="mfe"></div><button class="btn" id="mfb">${rec?"ذخیره":"ثبت"}</button>`);
  $("#mfc").onchange=()=>{$("#mfcn").style.display=$("#mfc").value=="__new"?"":"none"};
  $("#mfb").onclick=()=>{let c=$("#mfc").value;const t=$("#mft").value.trim();
   if(c=="__new"){c=$("#mfcn").value.trim();if(!c)return $("#mfe").textContent="نام مشتری جدید را وارد کنید.";
    if(!S.customers.includes(c))S.customers.push(c)}
   if(!c)return $("#mfe").textContent="یک مشتری از فهرست انتخاب کنید.";
-  S.qc.push({c,p:$("#mfp").value.trim(),o:$("#mfo").value.trim(),t,by:me.id,at:Date.now()});save(["qc","customers"]);closeModal();qc()};
+  if(rec){rec.c=c;rec.p=$("#mfp").value.trim();rec.o=$("#mfo").value.trim();rec.t=t}
+  else S.qc.push({id:nid(),c,p:$("#mfp").value.trim(),o:$("#mfo").value.trim(),t,by:me.id,at:Date.now()});
+  save(["qc","customers"]);closeModal();qc()};
 }
 
-function tasks(){
- const st={open:["در انتظار انجام","wa"],wait:["در انتظار تأیید نهایی","wa"],done:["بسته شد","ok"]};
- const mine=S.tasks.filter(t=>t.to==me.id||t.by==me.id).slice().sort((a,b)=>(a.s=="done")-(b.s=="done")||b.at-a.at);
- $("#v").innerHTML=`<div class="row" style="align-items:center"><h3 style="flex:1;margin:0">کارها و وظایف</h3><button class="btn sm" id="tnew" style="flex:0 0 auto">+ وظیفه جدید</button></div>
- ${mine.length?mine.map(t=>`<div class="card">${t.s!="done"?`<span class="tag wa">باز</span> `:""}<span class="tag ${st[t.s][1]}">${st[t.s][0]}</span> <span class="tag">${t.by==t.to?"شخصی":(t.to==me.id?"از طرف "+esc(uname(t.by)):"برای "+esc(uname(t.to)))}</span>
+function tasksNewCount(){return S.tasks.filter(t=>t.to==me.id&&t.by!=me.id&&t.at>(S.taskReads[me.id]||0)).length}
+function taskCard(t,st){
+ const doneStyle=t.s=="done"?'background:rgba(4,18,63,.07)':"";
+ return `<div class="card" style="${doneStyle}">${t.s!="done"?`<span class="tag wa">باز</span> `:""}<span class="tag ${st[t.s][1]}">${st[t.s][0]}</span>
  <p>${esc(t.d)}</p><div class="meta">تعریف: ${fd(t.at,1)}${t.doneAt?" · تیک انجام: "+fd(t.doneAt,1):""}${t.closeAt?" · تأیید نهایی: "+fd(t.closeAt,1):""}</div>
- ${t.note?`<p class="meta">توضیح انجام: ${esc(t.note)} ${t.file?"· پیوست: "+esc(t.file):""}</p>`:""}
- ${t.s=="open"&&t.to==me.id?`<textarea placeholder="توضیحات" data-n="${t.id}" rows="2"></textarea><input type="file" accept="image/*,.pdf,.doc,.docx,.xlsx" capture="environment" data-f="${t.id}"><button class="btn sm" data-done="${t.id}">✓ انجام شد</button>`:""}
- ${t.s=="wait"&&t.by==me.id?`<button class="btn sm" data-ok="${t.id}">تأیید نهایی</button> <button class="btn sm alt" data-back="${t.id}">بازگشت برای اصلاح</button>`:""}</div>`).join(""):'<p class="meta">کاری وجود ندارد.</p>'}`;
+ ${t.note?`<p class="meta">توضیح انجام: ${esc(t.note)} ${t.fileUrl?`· پیوست: <a href="${t.fileUrl}" target="_blank">${esc(t.fileName||"فایل")}</a>`:""}</p>`:""}
+ ${t.returnReason?`<p class="meta">دلیل بازگشت: ${esc(t.returnReason)}</p>`:""}
+ ${t.s=="open"&&t.to==me.id?(t.by==t.to?`<button class="btn sm" data-done="${t.id}">✓ انجام شد</button>`:`<textarea placeholder="توضیحات" data-n="${t.id}" rows="2"></textarea><input type="file" data-f="${t.id}"><button class="btn sm" data-done="${t.id}">✓ انجام شد</button>`):""}
+ ${t.s=="wait"&&t.by==me.id?`<button class="btn sm" data-ok="${t.id}">تأیید نهایی</button> <button class="btn sm alt" data-back="${t.id}">بازگشت برای اصلاح</button>`:""}</div>`;
+}
+function tasks(){
+ S.taskReads[me.id]=Date.now();save("taskReads");
+ const st={open:["در انتظار انجام","wa"],wait:["در انتظار تأیید نهایی","wa"],done:["بسته شد","ok"]};
+ const filt=window.__taskFilter||"all";
+ const match=t=>filt=="all"||(filt=="open"&&t.s!="done")||(filt=="done"&&t.s=="done");
+ const personal=S.tasks.filter(t=>t.by==me.id&&t.to==me.id&&match(t)).sort((a,b)=>(a.s=="done")-(b.s=="done")||b.at-a.at);
+ const others=S.tasks.filter(t=>!(t.by==me.id&&t.to==me.id)&&(t.to==me.id||t.by==me.id)&&match(t)).sort((a,b)=>(a.s=="done")-(b.s=="done")||b.at-a.at);
+ $("#v").innerHTML=`<div class="row" style="align-items:center"><h3 style="flex:1;margin:0">کارها و وظایف</h3><button class="btn sm" id="tnew" style="flex:0 0 auto">+ وظیفه جدید</button></div>
+ <div class="row" style="margin-bottom:10px">${[["all","همه"],["open","باز"],["done","انجام‌شده"]].map(([k,l])=>`<button class="btn sm ${filt==k?"":"alt"}" data-filt="${k}">${l}</button>`).join("")}</div>
+ <div class="card"><h3>کارهای شخصی</h3>${personal.length?personal.map(t=>taskCard(t,st)).join(""):'<p class="meta">موردی نیست.</p>'}</div>
+ <div class="card"><h3>کارهای ارجاعی</h3>${others.length?others.map(t=>`<div>${taskCard(t,st).replace('<div class="card"','<div class="card" style="margin-bottom:0"')}<p class="meta" style="margin-top:-6px">${t.by==me.id?"برای "+esc(uname(t.to)):"از طرف "+esc(uname(t.by))}</p></div>`).join(""):'<p class="meta">موردی نیست.</p>'}</div>`;
+ document.querySelectorAll("[data-filt]").forEach(b=>b.onclick=()=>{window.__taskFilter=b.dataset.filt;tasks()});
  $("#tnew").onclick=()=>openTaskModal();
  const T=id=>S.tasks.find(t=>t.id==id);
- document.querySelectorAll("[data-done]").forEach(b=>b.onclick=()=>{const t=T(b.dataset.done);t.note=document.querySelector(`[data-n="${t.id}"]`).value;
-  const f=document.querySelector(`[data-f="${t.id}"]`).files[0];if(f)t.file=f.name;t.doneAt=Date.now();
+ document.querySelectorAll("[data-done]").forEach(b=>b.onclick=async()=>{const t=T(b.dataset.done);
+  const nEl=document.querySelector(`[data-n="${t.id}"]`);if(nEl)t.note=nEl.value;
+  const fEl=document.querySelector(`[data-f="${t.id}"]`);if(fEl&&fEl.files[0]){const f=fEl.files[0];t.fileUrl=await uploadImage(f);t.fileName=f.name}
+  t.doneAt=Date.now();
   if(t.by==t.to){t.s="done";t.closeAt=Date.now()}else t.s="wait";save("tasks");tasks()});
  document.querySelectorAll("[data-ok]").forEach(b=>b.onclick=()=>{const t=T(b.dataset.ok);t.s="done";t.closeAt=Date.now();save("tasks");tasks()});
- document.querySelectorAll("[data-back]").forEach(b=>b.onclick=()=>{T(b.dataset.back).s="open";save("tasks");tasks()});
+ document.querySelectorAll("[data-back]").forEach(b=>b.onclick=()=>{const reason=prompt("توضیحات لازم برای بازگشت را بنویسید:");if(!reason||!reason.trim())return;const t=T(b.dataset.back);t.s="open";t.returnReason=reason.trim();save("tasks");tasks()});
 }
 function openTaskModal(){
- const others=S.users.filter(u=>u.on&&(u.id==me.id||can("assign")));
+ const others=S.users.filter(u=>u.on&&(u.id==me.id||can("assign"))).sort((a,b)=>(a.id==me.id)?-1:(b.id==me.id)?1:0);
  openModal(`<h3>تعریف کار جدید</h3><select id="mtt">${others.map(u=>`<option value="${u.id}">${u.id==me.id?"برای خودم":esc(u.name)}</option>`).join("")}</select><textarea id="mtd" rows="3" placeholder="شرح کامل درخواست"></textarea><button class="btn" id="mtb">ثبت کار</button>`);
  $("#mtb").onclick=()=>{const d=$("#mtd").value.trim();if(!d)return;const to=+$("#mtt").value;S.tasks.push({id:nid(),to,by:me.id,d,s:"open",at:Date.now()});save("tasks");closeModal();tasks()};
 }
@@ -284,19 +373,26 @@ function shift(){
  const g={};S.shifts.forEach(s=>{(g[s.date+"|"+s.sh]=g[s.date+"|"+s.sh]||[]).push(s)});
  const keys=Object.keys(g).sort().reverse();
  $("#v").innerHTML=`<div class="row" style="align-items:center"><h3 style="flex:1;margin:0">تحویل شیفت‌ها</h3>${can("shift")?`<button class="btn sm" id="shnew" style="flex:0 0 auto">+ ثبت جدید</button>`:""}</div>
- ${keys.length?keys.map(k=>{const [d,sh]=k.split("|");return `<div class="paper"><h4>${fd(d)} — شیفت ${sh}</h4>${g[k].map(s=>{
-  const confirms=s.confirms||[];const already=s.id&&confirms.some(c=>c.by==me.id);
-  return `<div>• ${esc(s.t)} (${esc(uname(s.by))})
-  ${confirms.length?`<div class="meta">تأیید دریافت: ${confirms.map(c=>esc(uname(c.by))+" ("+fd(c.at,1)+")").join("، ")}</div>`:""}
-  ${s.id&&can("shiftconfirm")&&!already?`<button class="btn sm alt" data-shc="${s.id}" style="margin:4px 0">تأیید دریافت</button>`:""}
-  </div>`}).join("")}</div>`}).join(""):'<p class="meta">هنوز مطلبی ثبت نشده است.</p>'}`;
+ ${keys.length?keys.map(k=>{const [d,sh]=k.split("|");const items=g[k];const rec=S.shiftReceipts[k];
+ const received=rec&&rec.upto>=items.length;
+ return `<div class="card" data-shg="${k}" style="cursor:pointer"><b>${fd(d)} — شیفت ${sh}</b><br><span class="tag ${received?"ok":"wa"}">${received?"دریافت شده توسط "+esc(uname(rec.by)):"منتظر تأیید دریافت"}</span></div>`}).join(""):'<p class="meta">هنوز مطلبی ثبت نشده است.</p>'}`;
  if(can("shift"))$("#shnew").onclick=()=>openShiftModal();
- document.querySelectorAll("[data-shc]").forEach(b=>b.onclick=()=>{const s=S.shifts.find(x=>x.id==+b.dataset.shc);if(!s)return;
-  s.confirms=s.confirms||[];if(!s.confirms.some(c=>c.by==me.id))s.confirms.push({by:me.id,at:Date.now()});save("shifts");shift()});
+ document.querySelectorAll("[data-shg]").forEach(c=>c.onclick=()=>openShiftDetail(c.dataset.shg,g[c.dataset.shg]));
+}
+function openShiftDetail(k,items){
+ const [d,sh]=k.split("|");
+ const rec=S.shiftReceipts[k];
+ const received=rec&&rec.upto>=items.length;
+ openModal(`<h3>${fd(d)} — شیفت ${sh}</h3>
+ ${items.map((s,i)=>`<div style="padding:6px 0;border-bottom:1px solid var(--line);${rec&&i<rec.upto?"color:var(--gray)":""}">${i+1}. ${esc(s.t)} <span class="meta">(${esc(uname(s.by))} · ${fd(s.at,1)})</span></div>`).join("")}
+ ${!received&&can("shiftconfirm")?`<button class="btn sm" id="shrecv" style="margin-top:10px">دریافت</button>`:received?`<p class="meta" style="margin-top:10px">دریافت‌شده توسط ${esc(uname(rec.by))} در ${fd(rec.at,1)}</p>`:""}`);
+ const b=document.getElementById("shrecv");
+ if(b)b.onclick=()=>{S.shiftReceipts[k]={by:me.id,at:Date.now(),upto:items.length};save("shiftReceipts");closeModal();shift()};
 }
 function openShiftModal(){
  const todayP=persianParts(new Date());
  if(window.__shY==null){window.__shY=todayP.y;window.__shM=todayP.m;window.__shD=todayP.d}
+ window.__shLines=[];
  const yrs=[];for(let y=todayP.y-3;y<=todayP.y+1;y++)yrs.push(y);
  function render(){
   const dim=daysInJalaliMonth(window.__shY,window.__shM);
@@ -306,15 +402,21 @@ function openShiftModal(){
  <select id="mshm">${JMONTHS.map((mn,i)=>`<option value="${i+1}" ${i+1==window.__shM?"selected":""}>${mn}</option>`).join("")}</select>
  <select id="mshy">${yrs.map(y=>`<option value="${y}" ${y==window.__shY?"selected":""}>${y}</option>`).join("")}</select>
  <select id="mss"><option value="روز">شیفت روز</option><option value="شب">شیفت شب</option></select></div>
- <textarea id="mst" rows="3" placeholder="مطالب مهم شیفت"></textarea><button class="btn" id="msb">ثبت</button>`;
+ ${window.__shLines.length?`<div class="card">${window.__shLines.map((l,i)=>`<div>${i+1}. ${esc(l)}</div>`).join("")}</div>`:""}
+ <input id="mst" placeholder="یک مورد را بنویسید و Enter بزنید">
+ <button class="btn" id="msb">پایان و ثبت</button>`;
  }
  function wire(){
   $("#mshy").onchange=()=>{window.__shY=+$("#mshy").value;openModal(render());wire()};
   $("#mshm").onchange=()=>{window.__shM=+$("#mshm").value;openModal(render());wire()};
   $("#mshd").onchange=()=>{window.__shD=+$("#mshd").value};
-  $("#msb").onclick=()=>{const t=$("#mst").value.trim();if(!t)return;
+  $("#mst").onkeydown=(e)=>{if(e.key=="Enter"){e.preventDefault();const v=$("#mst").value.trim();if(v){window.__shLines.push(v);openModal(render());wire();$("#mst").focus()}}};
+  $("#msb").onclick=()=>{const v=$("#mst").value.trim();if(v)window.__shLines.push(v);
+   if(!window.__shLines.length)return;
    const iso=isoFromJalali(window.__shY,window.__shM,window.__shD);
-   S.shifts.push({id:nid(),date:iso,sh:$("#mss").value,t,by:me.id,confirms:[]});save("shifts");closeModal();shift()};
+   const k=iso+"|"+$("#mss").value;
+   window.__shLines.forEach(t=>S.shifts.push({id:nid(),date:iso,sh:$("#mss").value,t,by:me.id}));
+   save("shifts");closeModal();shift()};
  }
  openModal(render());wire();
 }
@@ -344,12 +446,13 @@ function admin(){
 }
 function renderAdminUsers(BK){
  $("#v").innerHTML=`${BK}<div class="card"><h3>کاربران</h3>${S.users.map(u=>{const ed=window.__editUser==u.id;return `<div class="card" style="margin-bottom:8px">
- <div class="row" style="align-items:center"><span><b>${esc(u.name)}</b> <span class="meta">${esc(u.user)} · ${ROLES[u.role]}</span></span><span><span class="tag ${u.on?"ok":"wa"}">${u.on?"فعال":"غیرفعال"}</span> <button class="btn sm alt" data-ed="${u.id}">${ed?"بستن":"ویرایش"}</button> ${u.id!=me.id?`<button class="btn sm alt" data-tg="${u.id}">${u.on?"غیرفعال کن":"فعال کن"}</button>`:""}</span></div>
+ <div class="row" style="align-items:center"><span><b>${esc(u.name)}</b> <span class="meta">${esc(u.user)} · ${ROLES[u.role]}</span></span><span><span class="tag ${u.on?"ok":"wa"}">${u.on?"فعال":"غیرفعال"}</span> ${u.locked?'<span class="tag wa">قفل</span>':""} <button class="btn sm alt" data-ed="${u.id}">${ed?"بستن":"ویرایش"}</button> ${u.id!=me.id?`<button class="btn sm alt" data-tg="${u.id}">${u.on?"غیرفعال کن":"فعال کن"}</button>`:""} ${u.locked?`<button class="btn sm alt" data-ul="${u.id}">باز کردن قفل</button>`:""}</span></div>
  ${ed?`<div class="row" style="margin-top:8px"><input data-en="${u.id}" placeholder="نام" value="${esc(u.name)}"><input data-eu="${u.id}" placeholder="نام کاربری" value="${esc(u.user)}"><input data-ep="${u.id}" placeholder="رمز عبور جدید (اختیاری)"><select data-er="${u.id}">${Object.entries(ROLES).map(([k,v])=>`<option value="${k}" ${k==u.role?"selected":""}>${v}</option>`).join("")}</select></div><div class="err" data-ee="${u.id}"></div><button class="btn sm" data-es="${u.id}">ذخیره</button>`:""}
  </div>`}).join("")}
  <hr style="border:0;border-top:1px solid var(--line);margin:14px 0"><div class="row"><input id="nn" placeholder="نام و نام خانوادگی"><input id="nu" placeholder="نام کاربری"><input id="np" placeholder="رمز عبور"><select id="nr">${Object.entries(ROLES).map(([k,v])=>`<option value="${k}" ${k=="expert"?"selected":""}>${v}</option>`).join("")}</select></div><button class="btn" id="nb">افزودن کاربر</button></div>`;
  $("#abk").onclick=()=>{window.__adminSub=null;admin()};
  document.querySelectorAll("[data-tg]").forEach(b=>b.onclick=()=>{const u=S.users.find(x=>x.id==b.dataset.tg);u.on=u.on?0:1;save("users");renderAdminUsers(BK)});
+ document.querySelectorAll("[data-ul]").forEach(b=>b.onclick=()=>{const u=S.users.find(x=>x.id==b.dataset.ul);u.locked=false;u.failedAttempts=0;save("users");renderAdminUsers(BK)});
  document.querySelectorAll("[data-ed]").forEach(b=>b.onclick=()=>{const id=+b.dataset.ed;window.__editUser=window.__editUser==id?null:id;renderAdminUsers(BK)});
  document.querySelectorAll("[data-es]").forEach(b=>b.onclick=()=>{const id=+b.dataset.es;const u=S.users.find(x=>x.id==id);
   const n=document.querySelector(`[data-en="${id}"]`).value.trim(),un=document.querySelector(`[data-eu="${id}"]`).value.trim();
@@ -450,7 +553,11 @@ function profile(){
  <input type="password" id="ppw1" placeholder="رمز عبور فعلی">
  <input type="password" id="ppw2" placeholder="رمز عبور جدید">
  <input type="password" id="ppw3" placeholder="تکرار رمز عبور جدید">
- <div class="err" id="ppe"></div><button class="btn sm" id="ppb">ثبت رمز جدید</button></div>`;
+ <div class="err" id="ppe"></div><button class="btn sm" id="ppb">ثبت رمز جدید</button></div>
+ <div class="card"><h3>سوال امنیتی (برای بازیابی رمز)</h3>
+ <select id="psq">${SECQS.map((q,i)=>`<option value="${i}" ${me.secQ==i?"selected":""}>${esc(q)}</option>`).join("")}</select>
+ <input id="psa" placeholder="پاسخ شما" value="${me.secA?esc(me.secA):""}">
+ <div class="err" id="pse"></div><button class="btn sm" id="psb">ذخیره سوال امنیتی</button></div>`;
  $("#pf2").onchange=async()=>{const f=$("#pf2").files[0];if(!f)return;const url=await uploadImage(f);me.photo=url;save("users");profile()};
  $("#ppb").onclick=()=>{const p1=$("#ppw1").value,p2=$("#ppw2").value,p3=$("#ppw3").value;
   if(p1!=me.pass)return $("#ppe").textContent="رمز عبور فعلی درست نیست.";
@@ -458,6 +565,8 @@ function profile(){
   if(p2!=p3)return $("#ppe").textContent="تکرار رمز جدید مطابقت ندارد.";
   me.pass=p2;save("users");$("#ppe").style.color="var(--ok)";$("#ppe").textContent="رمز عبور با موفقیت تغییر کرد.";
   $("#ppw1").value="";$("#ppw2").value="";$("#ppw3").value=""};
+ $("#psb").onclick=()=>{const a=$("#psa").value.trim();if(!a)return $("#pse").textContent="پاسخ را وارد کنید.";
+  me.secQ=+$("#psq").value;me.secA=a;save("users");$("#pse").style.color="var(--ok)";$("#pse").textContent="ذخیره شد."};
 }
 
 function qcgram(){
@@ -474,25 +583,36 @@ function qcgramPost(id){
  $("#v").innerHTML=`<button class="btn sm alt" id="igback" style="margin-bottom:10px">→ بازگشت</button>
  <div class="card" style="padding:0;overflow:hidden">
  <div style="display:flex;gap:8px;align-items:center;padding:10px 12px">${avatar(p.by)}<b>${esc(uname(p.by))}</b><span class="meta">${fd(p.at,1)}</span></div>
- <div class="igframe"><img src="${p.images[window.__piIdx]}">
- ${p.images.length>1?`<button class="igarrow left" id="igprev">‹</button><button class="igarrow right" id="ignext">›</button><div class="igdots">${p.images.map((_,i)=>`<span class="${i==window.__piIdx?"on":""}"></span>`).join("")}</div>`:""}
+ <div class="igframe" id="igframe"><img src="${p.images[window.__piIdx]}">
+ ${p.images.length>1?`<div class="igdots">${p.images.map((_,i)=>`<span class="${i==window.__piIdx?"on":""}"></span>`).join("")}</div>`:""}
  </div>
  <div style="padding:10px 12px">
- <button class="btn sm ${liked?"":"alt"}" id="iglike">${liked?"❤️":"🤍"} (${(p.likes||[]).length})</button>
+ <button class="btn sm ${liked?"":"alt"}" id="iglike">${liked?"❤️":"🤍"}</button> <a href="#" id="iglikers" class="meta" style="color:inherit">${(p.likes||[]).length} لایک</a>
  <p>${esc(p.caption)}</p>
- ${p.comments.filter(c=>!c.parent).map(c=>`<div style="margin-top:8px;display:flex;gap:8px">${avatar(c.by)}<div><b style="font-size:13px">${esc(uname(c.by))}</b><div style="font-size:13px">${esc(c.text)}</div><div class="meta">${fd(c.at,1)} · <a href="#" data-reply="${c.id}" style="color:var(--navy,#04123f)">پاسخ</a></div>
- ${p.comments.filter(r=>r.parent==c.id).map(r=>`<div style="margin-top:6px;display:flex;gap:6px">${avatar(r.by)}<div><b style="font-size:12px">${esc(uname(r.by))}</b><div style="font-size:12px">${esc(r.text)}</div></div></div>`).join("")}
+ ${p.comments.filter(c=>!c.parent).map(c=>`<div style="margin-top:8px;display:flex;gap:8px">${avatar(c.by)}<div style="flex:1"><b style="font-size:13px">${esc(uname(c.by))}</b><div style="font-size:13px;display:flex;gap:6px;align-items:center"><a href="#" data-clike="${c.id}" style="color:#c0392b">${(c.likes||[]).includes(me.id)?"❤️":"🤍"}</a>${esc(c.text)}</div><div class="meta">${fd(c.at,1)} <span class="ig-reply"> · <a href="#" data-reply="${c.id}" style="color:var(--navy,#04123f)">پاسخ</a></span>${c.by==me.id||me.role=="manager"?` · <a href="#" data-cdel="${c.id}" style="color:#c0392b">حذف</a>`:""}</div>
+ ${p.comments.filter(r=>r.parent==c.id).map(r=>`<div style="margin-top:6px;display:flex;gap:6px">${avatar(r.by)}<div><b style="font-size:12px">${esc(uname(r.by))}</b><div style="font-size:12px">${esc(r.text)}</div>${r.by==me.id||me.role=="manager"?`<a href="#" data-cdel="${r.id}" style="color:#c0392b;font-size:11px">حذف</a>`:""}</div></div>`).join("")}
  </div></div>`).join("")}
  <div class="row" style="margin-top:10px"><input id="igcm" placeholder="نظر شما..."><button class="btn sm" id="igcb">ارسال</button></div>
  </div></div>`;
  $("#igback").onclick=()=>{window.__openPost=null;window.__piIdx=0;qcgram()};
  $("#iglike").onclick=()=>{p.likes=p.likes||[];const i=p.likes.indexOf(me.id);if(i>-1)p.likes.splice(i,1);else p.likes.push(me.id);save("posts");qcgramPost(id)};
- const prev=document.getElementById("igprev"),next=document.getElementById("ignext");
- if(prev)prev.onclick=()=>{window.__piIdx=(window.__piIdx-1+p.images.length)%p.images.length;qcgramPost(id)};
- if(next)next.onclick=()=>{window.__piIdx=(window.__piIdx+1)%p.images.length;qcgramPost(id)};
+ $("#iglikers").onclick=(e)=>{e.preventDefault();const names=(p.likes||[]).map(uname);openModal(`<h3>پسندیده‌شده توسط</h3>${names.length?names.map(n=>`<div style="padding:6px 0;border-bottom:1px solid var(--line)">${esc(n)}</div>`).join(""):'<p class="meta">هنوز کسی لایک نکرده است.</p>'}`)};
+ document.querySelectorAll("[data-clike]").forEach(a=>a.onclick=(e)=>{e.preventDefault();const c=p.comments.find(x=>x.id==a.dataset.clike);c.likes=c.likes||[];const i=c.likes.indexOf(me.id);if(i>-1)c.likes.splice(i,1);else c.likes.push(me.id);save("posts");qcgramPost(id)});
+ document.querySelectorAll("[data-cdel]").forEach(a=>a.onclick=(e)=>{e.preventDefault();p.comments=p.comments.filter(x=>x.id!=a.dataset.cdel&&x.parent!=a.dataset.cdel);save("posts");qcgramPost(id)});
+ const frame=document.getElementById("igframe");
+ if(frame&&p.images.length>1){
+  let sx=null;
+  frame.addEventListener("touchstart",e=>{sx=e.touches[0].clientX});
+  frame.addEventListener("touchend",e=>{if(sx==null)return;const dx=e.changedTouches[0].clientX-sx;
+   if(Math.abs(dx)>40){if(dx<0)window.__piIdx=(window.__piIdx+1)%p.images.length;else window.__piIdx=(window.__piIdx-1+p.images.length)%p.images.length;qcgramPost(id)}sx=null});
+  let mx=null;
+  frame.addEventListener("mousedown",e=>{mx=e.clientX});
+  frame.addEventListener("mouseup",e=>{if(mx==null)return;const dx=e.clientX-mx;
+   if(Math.abs(dx)>40){if(dx<0)window.__piIdx=(window.__piIdx+1)%p.images.length;else window.__piIdx=(window.__piIdx-1+p.images.length)%p.images.length;qcgramPost(id)}mx=null});
+ }
  let replyTo=null;
  document.querySelectorAll("[data-reply]").forEach(a=>a.onclick=(e)=>{e.preventDefault();replyTo=a.dataset.reply;$("#igcm").focus()});
- $("#igcb").onclick=()=>{const t=$("#igcm").value.trim();if(!t)return;p.comments.push({id:nid(),by:me.id,text:t,at:Date.now(),parent:replyTo});replyTo=null;save("posts");qcgramPost(id)};
+ $("#igcb").onclick=()=>{const t=$("#igcm").value.trim();if(!t)return;p.comments.push({id:nid(),by:me.id,text:t,at:Date.now(),parent:replyTo,likes:[]});replyTo=null;save("posts");qcgramPost(id)};
 }
 
 function readKey(gid){return gid+":"+me.id}
@@ -506,6 +626,7 @@ function colleague(){
  $("#v").innerHTML=`<div class="row" style="align-items:center"><h3 style="flex:1;margin:0">گروه‌های گفتگو</h3>${can("group")?`<button class="btn sm" id="gnew" style="flex:0 0 auto">+ گروه جدید</button>`:""}</div>
  ${mine.length?mine.map(g=>{const un=groupUnread(g.id);const last=S.gmsgs.filter(m=>m.groupId==g.id).slice(-1)[0];
  return `<div class="card" data-og="${g.id}" style="cursor:pointer;display:flex;align-items:center;gap:10px">
+ ${g.photo?`<img src="${g.photo}" style="width:40px;height:40px;border-radius:99px;object-fit:cover;flex:0 0 auto">`:avatar(0)}
  <div style="flex:1"><b>${esc(g.name)}</b><div class="meta">${last?esc((last.text||"📷 تصویر").slice(0,50)):"هنوز پیامی نیست"}</div></div>
  ${un?`<span class="tag wa" style="border-radius:99px">${un}</span>`:""}
  </div>`}).join(""):'<p class="meta">هنوز عضو هیچ گروهی نیستید.</p>'}`;
@@ -523,46 +644,98 @@ function openGroupModal(){
   if(members.length<2)return $("#mge").textContent="حداقل یک عضو دیگر انتخاب کنید.";
   S.groups.push({id:nid(),name,members,createdBy:me.id,at:Date.now()});save("groups");closeModal();colleague()};
 }
+function groupInfo(gid){
+ const g=S.groups.find(x=>x.id==gid);if(!g)return;
+ const isAdmin=g.createdBy==me.id||me.role=="manager";
+ openModal(`<h3>اطلاعات گروه</h3>
+ <div style="text-align:center">${g.photo?`<img src="${g.photo}" style="width:84px;height:84px;border-radius:99px;object-fit:cover">`:avatar(0,84)}
+ ${isAdmin?`<div><label class="meta" style="cursor:pointer">تغییر عکس گروه<input type="file" id="gpphoto" accept="image/*" style="display:none"></label></div>`:""}
+ <h3 style="margin:8px 0 2px">${esc(g.name)}</h3><p class="meta">مدیر گروه: ${esc(uname(g.createdBy))}</p></div>
+ <h3>اعضا</h3>
+ ${g.members.map(id=>`<div class="row" style="align-items:center"><span style="flex:1">${esc(uname(id))}${id==g.createdBy?" (مدیر)":""}</span>${isAdmin&&id!=g.createdBy?`<button class="btn sm alt" data-rm="${id}">حذف</button>`:""}</div>`).join("")}
+ ${isAdmin?`<h3>افزودن عضو</h3><select id="gpadd"><option value="">انتخاب کنید</option>${S.users.filter(u=>u.on&&!g.members.includes(u.id)).map(u=>`<option value="${u.id}">${esc(u.name)}</option>`).join("")}</select><button class="btn sm" id="gpaddb">افزودن</button>`:""}`);
+ const ph=document.getElementById("gpphoto");if(ph)ph.onchange=async()=>{const f=ph.files[0];if(!f)return;g.photo=await uploadImage(f);save("groups");groupInfo(gid)};
+ document.querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{g.members=g.members.filter(x=>x!=+b.dataset.rm);save("groups");groupInfo(gid)});
+ const ab=document.getElementById("gpaddb");if(ab)ab.onclick=()=>{const v=+document.getElementById("gpadd").value;if(!v)return;if(!g.members.includes(v))g.members.push(v);save("groups");groupInfo(gid)};
+}
 function groupChat(gid){
  const g=S.groups.find(x=>x.id==gid);
  if(!g){window.__openGroup=null;return colleague()}
  markRead(gid);
  const msgs=S.gmsgs.filter(m=>m.groupId==gid).sort((a,b)=>a.at-b.at);
  const M=id=>S.gmsgs.find(x=>x.id==id);
- $("#v").innerHTML=`<div class="row" style="align-items:center"><button class="btn sm alt" id="gback" style="flex:0 0 auto">→ بازگشت</button><h3 style="flex:1;margin:0">${esc(g.name)}</h3></div>
- <div class="card" style="max-height:50vh;overflow-y:auto" id="gmsgbox">${msgs.length?msgs.map(m=>{const rp=m.parent?M(m.parent):null;
- return `<div style="margin-bottom:10px;display:flex;gap:8px">${avatar(m.from)}<div style="flex:1">
- <b style="font-size:13px">${esc(uname(m.from))}</b>
- ${rp?`<div class="meta" style="border-inline-start:2px solid var(--gold);padding-inline-start:6px">${esc(uname(rp.from))}: ${esc((rp.text||"تصویر").slice(0,40))}</div>`:""}
- ${m.image?`<img src="${m.image}" style="max-width:60%;border-radius:8px;margin:4px 0;display:block">`:""}
- ${m.text?`<div>${esc(m.text)}</div>`:""}
- <div class="meta">${fd(m.at,1)} · <a href="#" data-reply="${m.id}" style="color:var(--navy,#04123f)">پاسخ</a></div>
- </div></div>`}).join(""):'<p class="meta">هنوز پیامی نیست.</p>'}</div>
- <div class="meta" id="greplybox" style="display:none;margin-top:8px"></div>
- <div class="row" style="margin-top:8px">${["👍","❤️","😂","🎉","🙏","🔥"].map(e=>`<button class="btn sm alt" data-emo="${e}" style="flex:0 0 auto;padding:6px 10px">${e}</button>`).join("")}</div>
- <div id="gsug" style="display:none;background:var(--card);border:1px solid var(--line);border-radius:8px;margin-top:6px;overflow:hidden"></div>
- <div class="row"><input id="gtxt" placeholder="پیام... (برای منشن از @ استفاده کنید)"><label class="btn sm alt" style="flex:0 0 auto;cursor:pointer">📎<input type="file" id="gimg" accept="image/*" style="display:none"></label><label class="btn sm alt" style="flex:0 0 auto;cursor:pointer">📷<input type="file" id="gcam" accept="image/*" capture="environment" style="display:none"></label><button class="btn sm" id="gsend" style="flex:0 0 auto">ارسال</button></div>`;
- const box=$("#gmsgbox");box.scrollTop=box.scrollHeight;
+ let lastDate=null;
+ const rows=msgs.map(m=>{const rp=m.parent?M(m.parent):null;const mine=m.from==me.id;
+ const dchip=fd(m.at);let chip="";
+ if(dchip!=lastDate){chip=`<div class="datechip"><span>${dchip}</span></div>`;lastDate=dchip}
+ return `${chip}<div class="msgrow ${mine?"me":"other"}" data-msgid="${m.id}">
+ ${!mine?avatar(m.from):""}
+ <div class="bubble ${mine?"me":"other"}">
+ ${!mine?`<div class="bname">${esc(uname(m.from))}</div>`:""}
+ ${rp?`<div class="meta" style="opacity:.8;border-inline-start:2px solid currentColor;padding-inline-start:6px;margin-bottom:3px">${esc(uname(rp.from))}: ${esc((rp.text||"تصویر").slice(0,40))}</div>`:""}
+ ${m.image?`<img src="${m.image}" style="max-width:100%;border-radius:8px;margin-bottom:3px;display:block">`:""}
+ ${m.text?`<div class="btext">${esc(m.text)}${m.edited?' <span style="opacity:.6;font-size:10px">(ویرایش‌شده)</span>':""}</div>`:""}
+ <div class="btime">${fd(m.at,1).split(" ").slice(-1)[0]}</div>
+ </div></div>`}).join("");
+ $("#v").innerHTML=`<div class="row" style="align-items:center"><button class="btn sm alt" id="gback" style="flex:0 0 auto">→ بازگشت</button><h3 style="flex:1;margin:0;cursor:pointer" id="gtitle">${esc(g.name)}</h3></div>
+ <div style="max-height:60vh;overflow-y:auto;padding:4px" id="gmsgbox">${msgs.length?rows:'<p class="meta">هنوز پیامی نیست.</p>'}</div>
+ <div class="meta" id="greplybox" style="display:none;margin:6px 0"></div>
+ <div class="chatbar">
+ <input id="gtxt" placeholder="پیام...">
+ <label style="cursor:pointer;padding:4px">📎<input type="file" id="gimg" accept="image/*" style="display:none"></label>
+ <label style="cursor:pointer;padding:4px">📷<input type="file" id="gcam" accept="image/*" capture="environment" style="display:none"></label>
+ <button class="btn sm" id="gsend" style="flex:0 0 auto;border-radius:99px;width:36px;height:36px;padding:0">➤</button>
+ </div>
+ <div id="gsug" style="display:none;background:var(--card);border:1px solid var(--line);border-radius:8px;margin-top:6px;overflow:hidden;position:fixed;bottom:100px;left:16px;right:16px;max-width:828px;margin:0 auto;z-index:7"></div>
+ <div id="gmenu" style="display:none;position:fixed;background:var(--card);border:1px solid var(--line);border-radius:10px;box-shadow:0 4px 14px rgba(0,0,0,.3);z-index:20;overflow:hidden"></div>`;
+ const box=$("#gmsgbox");box.scrollTop=box.scrollHeight;box.style.paddingBottom="8px";
+ $("#v").style.paddingBottom="140px";
  $("#gback").onclick=()=>{window.__openGroup=null;colleague()};
+ $("#gtitle").onclick=()=>groupInfo(gid);
  let replyTo=null;
- document.querySelectorAll("[data-reply]").forEach(a=>a.onclick=(e)=>{e.preventDefault();replyTo=+a.dataset.reply;const rm=M(replyTo);
+ function setReply(mid){replyTo=mid;const rm=M(mid);
   $("#greplybox").style.display="block";$("#greplybox").innerHTML=`در پاسخ به ${esc(uname(rm.from))}: ${esc((rm.text||"تصویر").slice(0,40))} <a href="#" id="gcancelreply">✕</a>`;
   document.getElementById("gcancelreply").onclick=(ev)=>{ev.preventDefault();replyTo=null;$("#greplybox").style.display="none"};
-  $("#gtxt").focus()});
- document.querySelectorAll("[data-emo]").forEach(b=>b.onclick=()=>{$("#gtxt").value+=b.dataset.emo});
+  $("#gtxt").focus();}
+ function closeMenu(){$("#gmenu").style.display="none"}
+ function openMsgMenu(m,x,y){
+  const mine=m.from==me.id;
+  const isMobile=window.innerWidth<=640;
+  const items=[];
+  if(!isMobile)items.push(["پاسخ",()=>{setReply(m.id);closeMenu()}]);
+  if(m.text)items.push(["کپی",()=>{navigator.clipboard&&navigator.clipboard.writeText(m.text);closeMenu()}]);
+  items.push(["انتقال",()=>{closeMenu();openForwardModal(m)}]);
+  if(mine&&m.text)items.push(["ویرایش",()=>{closeMenu();const nt=prompt("ویرایش پیام:",m.text);if(nt==null)return;m.text=nt.trim();m.edited=true;save("gmsgs");groupChat(gid)}]);
+  if(mine||me.role=="manager")items.push(["حذف",()=>{closeMenu();if(!confirm("این پیام برای همه حذف شود؟"))return;S.gmsgs=S.gmsgs.filter(x=>x.id!=m.id);save("gmsgs");groupChat(gid)}]);
+  const menu=$("#gmenu");
+  menu.innerHTML=items.map(([label],i)=>`<div data-mi="${i}" style="padding:10px 16px;cursor:pointer;border-bottom:1px solid var(--line)">${label}</div>`).join("");
+  menu.style.display="block";
+  const mw=180,vw=window.innerWidth,vh=window.innerHeight;
+  menu.style.left=Math.min(x,vw-mw-10)+"px";menu.style.top=Math.min(y,vh-220)+"px";
+  menu.querySelectorAll("[data-mi]").forEach(el=>el.onclick=()=>items[+el.dataset.mi][1]());
+ }
+ document.addEventListener("click",closeMenu,{once:true});
+ document.querySelectorAll(".msgrow").forEach(row=>{
+  const mid=row.dataset.msgid;const m=M(mid);
+  row.oncontextmenu=(e)=>{e.preventDefault();openMsgMenu(m,e.clientX,e.clientY)};
+  let t=null;
+  row.addEventListener("touchstart",(e)=>{t=setTimeout(()=>{const touch=e.touches[0];openMsgMenu(m,touch.clientX,touch.clientY)},500)});
+  row.addEventListener("touchend",()=>clearTimeout(t));
+  row.addEventListener("touchmove",()=>clearTimeout(t));
+ });
  const memberNames=g.members.filter(id=>id!=me.id).map(id=>uname(id));
  $("#gtxt").oninput=()=>{
   const v=$("#gtxt").value;
-  const m=v.match(/@([^\s@]*)$/);
+  const mm=v.match(/@([^\s@]*)$/);
   const sug=$("#gsug");
-  if(!m){sug.style.display="none";sug.innerHTML="";return}
-  const partial=m[1];
+  if(!mm){sug.style.display="none";sug.innerHTML="";return}
+  const partial=mm[1];
   const matches=memberNames.filter(n=>n.includes(partial));
   if(!matches.length){sug.style.display="none";sug.innerHTML="";return}
   sug.style.display="block";
   sug.innerHTML=matches.map(n=>`<div data-mn="${esc(n)}" style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--line)">@${esc(n)}</div>`).join("");
   sug.querySelectorAll("[data-mn]").forEach(el=>el.onclick=()=>{
-   $("#gtxt").value=v.slice(0,m.index)+"@"+el.dataset.mn+" ";
+   $("#gtxt").value=v.slice(0,mm.index)+"@"+el.dataset.mn+" ";
    sug.style.display="none";sug.innerHTML="";$("#gtxt").focus();
   });
  };
@@ -574,6 +747,13 @@ function groupChat(gid){
  $("#gsend").onclick=()=>sendWith(null);
  $("#gimg").onchange=async()=>{const f=$("#gimg").files[0];if(!f)return;const url=await uploadImage(f);sendWith(url)};
  $("#gcam").onchange=async()=>{const f=$("#gcam").files[0];if(!f)return;const url=await uploadImage(f);sendWith(url)};
+}
+function openForwardModal(m){
+ const mine=S.groups.filter(g=>g.members.includes(me.id));
+ openModal(`<h3>انتقال پیام به...</h3>${mine.map(g=>`<div data-fwg="${g.id}" style="padding:10px;cursor:pointer;border-bottom:1px solid var(--line)">${esc(g.name)}</div>`).join("")}`);
+ document.querySelectorAll("[data-fwg]").forEach(el=>el.onclick=()=>{const gid2=+el.dataset.fwg;
+  S.gmsgs.push({id:nid(),groupId:gid2,from:me.id,text:m.text||"",image:m.image||null,at:Date.now(),parent:null});
+  save("gmsgs");closeModal();window.__openGroup=gid2;markRead(gid2);colleague()});
 }
 
 function train(){
