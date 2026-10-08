@@ -88,11 +88,11 @@ body.no-bgimg{background-image:none!important;background-color:var(--bg)}
 .igdots{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);display:flex;gap:4px}
 .igdots span{width:6px;height:6px;border-radius:99px;background:rgba(255,255,255,.5)}
 .igdots span.on{background:#fff}
-.bookgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;padding-right:14px}
-.bookcard{position:relative;background:#7eafd0;border-radius:14px 4px 4px 14px;aspect-ratio:3/4;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:2px 3px 6px rgba(0,0,0,.3);padding:8px}
-.bookcard::before{content:"";position:absolute;right:-12px;top:4px;bottom:4px;width:14px;background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="14" height="22"><path d="M7,0 C1,3 1,8 7,11 C13,14 13,19 7,22" stroke="%23b0bec5" stroke-width="2.2" fill="none"/></svg>');background-repeat:repeat-y;filter:drop-shadow(1px 1px 1px rgba(0,0,0,.3))}
+.bookgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;padding-left:12px}
+.bookcard{position:relative;background:#7eafd0;border-radius:12px;aspect-ratio:3/4;cursor:pointer;display:flex;align-items:flex-start;justify-content:center;box-shadow:2px 3px 6px rgba(0,0,0,.3);padding:12px 8px}
+.bookcard::before{content:"";position:absolute;left:-8px;top:10px;bottom:10px;width:14px;background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="14" height="24"><rect x="3" y="3" width="8" height="18" rx="4" fill="%23607d8b"/><circle cx="7" cy="12" r="3" fill="white"/></svg>');background-repeat:repeat-y;filter:drop-shadow(1px 1px 1px rgba(0,0,0,.3))}
 .bicon{display:none}
-.btitle{color:#fff;font-size:15px;font-weight:800;text-align:center;text-shadow:0 1px 3px rgba(0,0,0,.6);padding:0 2px}
+.btitle{background:#fff;color:#333;font-size:11.5px;font-weight:700;text-align:center;padding:12px 6px;border-radius:6px;width:75%;margin-top:10px}
 </style>
 </head>
 <body>
@@ -116,9 +116,9 @@ qc:[],tasks:[],shifts:[],ann:[],customers:["شرکت نمونه"]};
 let S,me=null,tab="home",q="";
 try{S=JSON.parse(localStorage.getItem("qcdb"))||D0}catch(e){S=D0}
 S.customers=S.customers||[];S.posts=S.posts||[];S.msgs=S.msgs||[];S.trainings=S.trainings||[];S.nc=S.nc||[];S.chart=S.chart||{};
-S.announcement=S.announcement||null;S.occasion=S.occasion||null;S.groups=S.groups||[];S.gmsgs=S.gmsgs||[];S.reads=S.reads||{};S.suggestions=S.suggestions||[];S.suggReads=S.suggReads||{};S.complaints=S.complaints||[];S.complaintSeen=S.complaintSeen||{};S.taskReads=S.taskReads||{};S.shiftReceipts=S.shiftReceipts||{};
+S.announcement=S.announcement||null;S.occasion=S.occasion||null;S.groups=S.groups||[];S.gmsgs=S.gmsgs||[];S.reads=S.reads||{};S.suggestions=S.suggestions||[];S.suggReads=S.suggReads||{};S.complaints=S.complaints||[];S.complaintSeen=S.complaintSeen||{};S.taskReads=S.taskReads||{};S.shiftReceipts=S.shiftReceipts||{};S.ncSeen=S.ncSeen||{};
 S.perms.qcgram=S.perms.qcgram||["manager","supervisor"];S.perms.train=S.perms.train||["manager","supervisor"];S.perms.group=S.perms.group||["manager","supervisor","senior"];S.perms.complaint=S.perms.complaint||["manager","supervisor"];S.perms.nc=S.perms.nc||["manager","supervisor"];S.perms.ncresponder=S.perms.ncresponder||["supervisor","senior","expert"];S.perms.shiftconfirm=S.perms.shiftconfirm||["manager","supervisor","senior"];
-const KEYS=["users","customers","perms","ann","qc","tasks","shifts","msgs","posts","trainings","nc","chart","announcement","occasion","groups","gmsgs","reads","suggestions","suggReads","complaints","complaintSeen","taskReads","shiftReceipts"];
+const KEYS=["users","customers","perms","ann","qc","tasks","shifts","msgs","posts","trainings","nc","chart","announcement","occasion","groups","gmsgs","reads","suggestions","suggReads","complaints","complaintSeen","taskReads","shiftReceipts","ncSeen"];
 const SUPABASE_URL="https://rmowptvcexryfaagdyzo.supabase.co";
 const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJtb3dwdHZjZXhyeWZhYWdkeXpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA4MTk0MjAsImV4cCI6MjEwNjM5NTQyMH0.LCVWMxOh04g5xlXiffS52Cydsfn9nEHsj344PjYQImY";
 let sb=null,DBSTATE="nodb";
@@ -144,7 +144,7 @@ async function loadFromDb(){
  if(error){DBSTATE="error";return}
  (data||[]).forEach(row=>{if(row.value!==undefined&&row.value!==null)S[row.key]=row.value});
  S.customers=S.customers||[];S.posts=S.posts||[];S.msgs=S.msgs||[];S.trainings=S.trainings||[];S.nc=S.nc||[];S.chart=S.chart||{};
- S.announcement=S.announcement||null;S.occasion=S.occasion||null;S.groups=S.groups||[];S.gmsgs=S.gmsgs||[];S.reads=S.reads||{};S.suggestions=S.suggestions||[];S.suggReads=S.suggReads||{};S.complaints=S.complaints||[];S.complaintSeen=S.complaintSeen||{};S.taskReads=S.taskReads||{};S.shiftReceipts=S.shiftReceipts||{};
+ S.announcement=S.announcement||null;S.occasion=S.occasion||null;S.groups=S.groups||[];S.gmsgs=S.gmsgs||[];S.reads=S.reads||{};S.suggestions=S.suggestions||[];S.suggReads=S.suggReads||{};S.complaints=S.complaints||[];S.complaintSeen=S.complaintSeen||{};S.taskReads=S.taskReads||{};S.shiftReceipts=S.shiftReceipts||{};S.ncSeen=S.ncSeen||{};
  S.ann=S.ann||[];S.qc=S.qc||[];S.tasks=S.tasks||[];S.shifts=S.shifts||[];
  S.users=(S.users&&S.users.length)?S.users:D0.users;S.perms=S.perms||D0.perms;
  S.perms.qcgram=S.perms.qcgram||["manager","supervisor"];S.perms.train=S.perms.train||["manager","supervisor"];S.perms.group=S.perms.group||["manager","supervisor","senior"];S.perms.complaint=S.perms.complaint||["manager","supervisor"];S.perms.nc=S.perms.nc||["manager","supervisor"];S.perms.ncresponder=S.perms.ncresponder||["supervisor","senior","expert"];S.perms.shiftconfirm=S.perms.shiftconfirm||["manager","supervisor","senior"];
@@ -248,7 +248,7 @@ function home(){
  const la=S.announcement;
  const oc=S.occasion;
  const lp=S.posts[S.posts.length-1];
- $("#v").innerHTML=`<div class="menugrid">${TABS().map(t=>{const bn=t[0]=="suggestions"?suggUnread():t[0]=="complaints"?complaintsUnseen():0;
+ $("#v").innerHTML=`<div class="menugrid">${TABS().map(t=>{const bn=t[0]=="suggestions"?suggUnread():t[0]=="complaints"?complaintsUnseen():t[0]=="nc"?ncNewCount():0;
  const ribbon=t[0]=="tasks"&&tasksNewCount()>0?'<span class="ribbon">جدید</span>':"";
  return `<button data-t="${t[0]}">${ribbon}<span class="ic">${t[2]}</span>${t[1]}${bn?`<span style="position:absolute;top:2px;left:2px;background:#c0392b;color:#fff;font-size:9px;min-width:15px;height:15px;border-radius:99px;display:flex;align-items:center;justify-content:center;padding:0 3px">${bn}</span>`:""}</button>`}).join("")}</div>
  <div class="card" id="anncard" style="cursor:pointer;margin-top:10px;padding:8px 14px"><h3 style="margin:0;font-size:13px">اعلانات</h3><p class="meta" style="margin:3px 0 0">${la?esc(la.text.slice(0,70)):"اعلانی ثبت نشده است"}</p></div>
@@ -640,23 +640,42 @@ function qcgramPost(id){
  const frame=document.getElementById("igframe");
  if(frame&&p.images.length>1){
   const curImg=frame.querySelector("img");
-  function page(dir){
-   if(curImg){
-    curImg.style.transition="transform .18s ease,opacity .18s ease";
-    curImg.style.transform=dir=="next"?"translateX(-25%)":"translateX(25%)";
-    curImg.style.opacity="0";
-   }
-   window.__igDir=dir;
-   if(dir=="next")window.__piIdx=(window.__piIdx+1)%p.images.length;
-   else window.__piIdx=(window.__piIdx-1+p.images.length)%p.images.length;
-   setTimeout(()=>qcgramPost(id),160);
-  }
-  let sx=null,moved=false;
+  curImg.style.animation="none";curImg.style.position="relative";
+  let sx=null,incoming=null,incomingDir=null;
   frame.style.touchAction="pan-y";
-  frame.addEventListener("pointerdown",e=>{sx=e.clientX;moved=false;try{frame.setPointerCapture(e.pointerId)}catch(err){}});
-  frame.addEventListener("pointermove",e=>{if(sx!=null&&Math.abs(e.clientX-sx)>5)moved=true});
-  frame.addEventListener("pointerup",e=>{if(sx==null)return;const dx=e.clientX-sx;sx=null;
-   if(Math.abs(dx)>40)page(dx<0?"next":"prev")});
+  function ensureIncoming(dir){
+   if(incoming&&incomingDir===dir)return incoming;
+   if(incoming)incoming.remove();
+   const nIdx=dir=="next"?(window.__piIdx+1)%p.images.length:(window.__piIdx-1+p.images.length)%p.images.length;
+   incoming=document.createElement("img");
+   incoming.src=p.images[nIdx];incoming.draggable=false;
+   incoming.style.cssText="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;animation:none;transition:none";
+   incoming.style.transform=dir=="next"?"translateX(100%)":"translateX(-100%)";
+   frame.appendChild(incoming);incomingDir=dir;return incoming;
+  }
+  frame.addEventListener("pointerdown",e=>{sx=e.clientX;curImg.style.transition="none";try{frame.setPointerCapture(e.pointerId)}catch(err){}});
+  frame.addEventListener("pointermove",e=>{if(sx==null)return;const dx=e.clientX-sx;const dir=dx<0?"next":"prev";
+   const img2=ensureIncoming(dir);
+   curImg.style.transform=`translateX(${dx}px)`;
+   img2.style.transform=dir=="next"?`translateX(calc(100% + ${dx}px))`:`translateX(calc(-100% + ${dx}px))`;
+  });
+  function finish(dx){
+   const dir=incomingDir;const was=sx;sx=null;if(was==null)return;
+   const threshold=frame.clientWidth*0.25;
+   curImg.style.transition="transform .2s ease";
+   if(incoming)incoming.style.transition="transform .2s ease";
+   if(dir&&Math.abs(dx)>threshold){
+    curImg.style.transform=dir=="next"?"translateX(-100%)":"translateX(100%)";
+    if(incoming)incoming.style.transform="translateX(0)";
+    window.__piIdx=dir=="next"?(window.__piIdx+1)%p.images.length:(window.__piIdx-1+p.images.length)%p.images.length;
+    setTimeout(()=>qcgramPost(id),200);
+   }else{
+    curImg.style.transform="translateX(0)";
+    if(incoming)incoming.style.transform=dir=="next"?"translateX(100%)":"translateX(-100%)";
+   }
+  }
+  frame.addEventListener("pointerup",e=>finish(e.clientX-(sx??e.clientX)));
+  frame.addEventListener("pointercancel",()=>finish(0));
  }
  let replyTo=null;
  document.querySelectorAll("[data-reply]").forEach(a=>a.onclick=(e)=>{e.preventDefault();replyTo=a.dataset.reply;$("#igcm").focus()});
@@ -833,46 +852,89 @@ function openTrainModal(){
   S.trainings.push({id:nid(),title:ti,text:tx,image,kind,by:me.id,at:Date.now()});save("trainings");closeModal();train()};
 }
 
+const NCSTAGE={l1:"نزد بررسی‌کننده",l2:"نزد سطح دو",l1review:"بازبینی سطح یک",creator:"نزد ثبت‌کننده",closed:"بسته"};
 function nc(){
- const CAUSE={human:"نیروی انسانی",method:"روش کار"};
- const mine=S.nc.filter(n=>me.role=="manager"||n.by==me.id||n.to[0]==me.id||n.holder==me.id).slice().sort((a,b)=>(a.status=="closed")-(b.status=="closed")||b.at-a.at);
+ if(window.__openNc)return ncDetail(window.__openNc);
+ const mine=S.nc.filter(n=>n.by==me.id||n.l1==me.id||n.l2==me.id||me.role=="manager");
+ const sorted=mine.slice().sort((a,b)=>(a.stage=="closed")-(b.stage=="closed")||b.at-a.at);
  const others=S.users.filter(u=>u.on&&u.id!=me.id&&S.perms.ncresponder.includes(u.role));
  $("#v").innerHTML=`<div class="row" style="align-items:center"><h3 style="flex:1;margin:0">عدم انطباق‌ها</h3>${can("nc")?`<button class="btn sm" id="ncnew" style="flex:0 0 auto">+ ثبت جدید</button>`:""}</div>
- ${mine.length?mine.map(n=>{
- const closed=n.status=="closed";const mineHold=n.holder==me.id;const owner=me.id==n.by||me.role=="manager";
- return `<div class="card">${!closed?`<span class="tag wa">باز</span> `:""}<b>${esc(n.subject)}</b> <span class="tag ${closed?"ok":"wa"}">${closed?"بسته":n.status=="awaiting_manager"?"در انتظار تأیید مدیر":"در جریان"}</span>
- <p class="meta">ثبت‌کننده: ${esc(uname(n.by))} · دست: ${esc(uname(n.holder))} · گردش: ${n.to.map(uname).join(" ← ")}</p>
- <p>${esc(n.desc)}</p>
- <div class="meta">${n.trail.map(h=>`${esc(uname(h.by))}: ${esc(h.note||h.type)} (${fd(h.at,1)})`).join("<br>")}</div>
- ${n.cause?`<p class="meta">عامل: ${CAUSE[n.cause]||""} ${n.offenders&&n.offenders.length?"· افراد: "+n.offenders.map(uname).join("، "):""}${n.corrective?"<br>اقدام اصلاحی: "+esc(n.corrective):""}</p>`:""}
- ${!closed&&mineHold&&me.id!=n.to[0]?`<div class="row"><select data-fwd="${n.id}"><option value="">ارسال به...</option>${S.users.filter(u=>u.on&&u.id!=n.holder&&S.perms.ncresponder.includes(u.role)).map(u=>`<option value="${u.id}">${esc(u.name)}</option>`).join("")}</select><input placeholder="یادداشت" data-fnote="${n.id}"></div><button class="btn sm" data-fb="${n.id}">ارسال به نفر بعد</button>`:""}
- ${!closed&&mineHold&&me.id==n.to[0]&&n.status=="in_progress"?`<div class="card"><select data-cause="${n.id}"><option value="">عامل را انتخاب کنید</option><option value="human">نیروی انسانی</option><option value="method">روش کار</option></select><select multiple data-off="${n.id}" style="min-height:70px">${S.users.filter(u=>u.on).map(u=>`<option value="${u.id}">${esc(u.name)}</option>`).join("")}</select><textarea data-corr="${n.id}" rows="2" placeholder="اقدام اصلاحی"></textarea><button class="btn sm" data-concl="${n.id}">ثبت نتیجه‌گیری و ارسال برای تأیید مدیر</button></div>`:""}
- ${!closed&&owner&&n.status=="awaiting_manager"?`<button class="btn sm" data-appr="${n.id}">تأیید و بستن</button> <button class="btn sm alt" data-rej="${n.id}">رد و بازگشت</button>`:""}
- ${!closed&&(owner||me.id==n.to[0])&&n.holder!=me.id?`<button class="btn sm alt" data-pull="${n.id}">بازپس‌گیری با یادداشت</button>`:""}
- </div>`}).join(""):'<p class="meta">موردی برای نمایش نیست.</p>'}
+ ${sorted.length?sorted.map(n=>{
+  const closed=n.stage=="closed";
+  const isNew=n.holder==me.id&&n.trail.length&&n.trail[n.trail.length-1].at>(S.ncSeen[n.id+":"+me.id]||0);
+  return `<div class="card" data-onc="${n.id}" style="cursor:pointer;${closed?"opacity:.6":""}">${isNew?'<span class="tag wa">جدید</span> ':""}<b>${esc(n.subject)}</b> <span class="tag ${closed?"ok":"wa"}">${NCSTAGE[n.stage]||n.stage}</span><div class="meta">${fd(n.at,1)}</div></div>`;
+ }).join(""):'<p class="meta">موردی برای نمایش نیست.</p>'}
  ${me.role=="manager"?ncReport():""}`;
  if(can("nc"))$("#ncnew").onclick=()=>openNcModal(others);
- const N=id=>S.nc.find(x=>x.id==id);
- document.querySelectorAll("[data-fb]").forEach(b=>b.onclick=()=>{const n=N(+b.dataset.fb);const to=+document.querySelector(`[data-fwd="${n.id}"]`).value;if(!to)return;
-  const note=document.querySelector(`[data-fnote="${n.id}"]`).value.trim();n.to.push(to);n.holder=to;n.trail.push({by:me.id,type:"ارجاع",note,at:Date.now()});save("nc");nc()});
- document.querySelectorAll("[data-concl]").forEach(b=>b.onclick=()=>{const n=N(+b.dataset.concl);const cause=document.querySelector(`[data-cause="${n.id}"]`).value;
-  const offs=[...document.querySelector(`[data-off="${n.id}"]`).selectedOptions].map(o=>+o.value);const corr=document.querySelector(`[data-corr="${n.id}"]`).value.trim();
-  if(!cause||!corr)return;n.cause=cause;n.offenders=cause=="human"?offs:[];n.corrective=corr;n.status="awaiting_manager";n.holder=n.by;n.trail.push({by:me.id,type:"نتیجه‌گیری",note:corr,at:Date.now()});save("nc");nc()});
- document.querySelectorAll("[data-appr]").forEach(b=>b.onclick=()=>{const n=N(+b.dataset.appr);n.status="closed";n.trail.push({by:me.id,type:"تأیید و بستن",at:Date.now()});save("nc");nc()});
- document.querySelectorAll("[data-rej]").forEach(b=>b.onclick=()=>{const n=N(+b.dataset.rej);n.status="in_progress";n.holder=n.to[0];n.trail.push({by:me.id,type:"رد شد",note:"بازگشت برای اصلاح",at:Date.now()});save("nc");nc()});
- document.querySelectorAll("[data-pull]").forEach(b=>b.onclick=()=>{const n=N(+b.dataset.pull);n.holder=me.id;n.status="in_progress";n.trail.push({by:me.id,type:"بازپس‌گیری",at:Date.now()});save("nc");nc()});
+ document.querySelectorAll("[data-onc]").forEach(c=>c.onclick=()=>{window.__openNc=+c.dataset.onc;nc()});
+}
+function ncCauseForm(){
+ return `<div class="card"><h3>نتیجه‌گیری نهایی</h3><select id="ncc_cause"><option value="">عامل را انتخاب کنید</option><option value="human">نیروی انسانی</option><option value="method">روش کار</option></select>
+ <div id="ncc_offwrap" style="display:none"><p class="meta">افراد خاطی (چندتایی قابل‌انتخاب):</p><select multiple id="ncc_off" style="min-height:70px">${S.users.filter(u=>u.on).map(u=>`<option value="${u.id}">${esc(u.name)}</option>`).join("")}</select></div>
+ <textarea id="ncc_corr" rows="2" placeholder="اقدام اصلاحی"></textarea>
+ <button class="btn sm" id="ncc_go">تکمیل و ارسال برای ثبت‌کننده</button></div>`;
+}
+function wireCauseForm(n){
+ const causeSel=document.getElementById("ncc_cause");if(!causeSel)return;
+ causeSel.onchange=()=>{document.getElementById("ncc_offwrap").style.display=causeSel.value=="human"?"block":"none"};
+ document.getElementById("ncc_go").onclick=()=>{
+  const cause=causeSel.value;const corr=document.getElementById("ncc_corr").value.trim();
+  if(!cause||!corr)return;
+  const offs=cause=="human"?[...document.getElementById("ncc_off").selectedOptions].map(o=>+o.value):[];
+  n.cause=cause;n.offenders=offs;n.corrective=corr;n.stage="creator";n.holder=n.by;
+  n.trail.push({type:"نتیجه‌گیری",from:me.id,to:n.by,note:corr,at:Date.now()});
+  save("nc");window.__openNc=null;nc();
+ };
+}
+function ncDetail(id){
+ const n=S.nc.find(x=>x.id==id);
+ if(!n){window.__openNc=null;return nc()}
+ S.ncSeen[n.id+":"+me.id]=Date.now();save("ncSeen");
+ const CAUSE={human:"نیروی انسانی",method:"روش کار"};
+ $("#v").innerHTML=`<button class="btn sm alt" id="ncback" style="margin-bottom:10px">→ بازگشت</button>
+ <div class="card"><h3>${esc(n.subject)}</h3><p>${esc(n.desc)}</p><span class="tag ${n.stage=="closed"?"ok":"wa"}">${NCSTAGE[n.stage]||n.stage}</span></div>
+ <div class="card"><h3>گردش</h3>${n.trail.map(h=>`<div style="padding:6px 0;border-bottom:1px solid var(--line)"><b>${esc(h.type)}</b><div class="meta">از: ${esc(uname(h.from))}${h.to?" · به: "+esc(uname(h.to)):""} · ${fd(h.at,1)}</div>${h.note?`<p>${esc(h.note)}</p>`:""}</div>`).join("")}</div>
+ ${n.cause?`<div class="card"><p>عامل: ${CAUSE[n.cause]||""} ${n.offenders&&n.offenders.length?"· افراد: "+n.offenders.map(uname).join("، "):""}</p>${n.corrective?`<p>اقدام اصلاحی: ${esc(n.corrective)}</p>`:""}</div>`:""}
+ <div id="ncactions"></div>`;
+ $("#ncback").onclick=()=>{window.__openNc=null;nc()};
+ const ac=document.getElementById("ncactions");
+ if(n.stage=="l1"&&n.l1==me.id){
+  const subs=S.users.filter(u=>u.on&&u.id!=me.id&&S.chart[u.id]==n.l1);
+  ac.innerHTML=`<div class="card"><h3>ارجاع جهت بررسی</h3>${subs.length?`<select id="ncfwd">${subs.map(u=>`<option value="${u.id}">${esc(u.name)}</option>`).join("")}</select><input id="ncfwdnote" placeholder="یادداشت (اختیاری)"><button class="btn sm" id="ncfwdgo">ارجاع</button>`:'<p class="meta">در چارت سازمانی، کسی زیرمجموعه‌ی شما ثبت نشده است.</p>'}</div>
+  ${ncCauseForm()}`;
+  const fg=document.getElementById("ncfwdgo");if(fg)fg.onclick=()=>{const to=+document.getElementById("ncfwd").value;const note=document.getElementById("ncfwdnote").value.trim();
+   n.l2=to;n.holder=to;n.stage="l2";n.trail.push({type:"ارجاع جهت بررسی",from:me.id,to,note,at:Date.now()});save("nc");window.__openNc=null;nc()};
+  wireCauseForm(n);
+ }else if(n.stage=="l2"&&n.l2==me.id){
+  ac.innerHTML=`<div class="card"><h3>توضیحات</h3><textarea id="ncl2note" rows="3" placeholder="یافته‌ها و توضیحات"></textarea><button class="btn sm" id="ncl2go">ارسال به سطح اول</button></div>`;
+  document.getElementById("ncl2go").onclick=()=>{const note=document.getElementById("ncl2note").value.trim();if(!note)return;
+   n.holder=n.l1;n.stage="l1review";n.trail.push({type:"پاسخ سطح دو",from:me.id,to:n.l1,note,at:Date.now()});save("nc");window.__openNc=null;nc()};
+ }else if(n.stage=="l1review"&&n.l1==me.id){
+  ac.innerHTML=`<div class="card"><h3>بازگشت جهت بررسی مجدد به سطح دو</h3><textarea id="ncretnote" rows="2" placeholder="توضیح"></textarea><button class="btn sm alt" id="ncretgo">ارسال</button></div>
+  ${ncCauseForm()}`;
+  document.getElementById("ncretgo").onclick=()=>{const note=document.getElementById("ncretnote").value.trim();if(!note)return;
+   n.holder=n.l2;n.stage="l2";n.trail.push({type:"بازگشت جهت بررسی مجدد",from:me.id,to:n.l2,note,at:Date.now()});save("nc");window.__openNc=null;nc()};
+  wireCauseForm(n);
+ }else if(n.stage=="creator"&&n.by==me.id){
+  ac.innerHTML=`<div class="card"><button class="btn sm" id="ncapprove">تأیید</button> <button class="btn sm alt" id="ncreturn">بازگشت جهت بررسی مجدد</button><div id="ncretwrap" style="display:none;margin-top:8px"><textarea id="ncretreason" rows="2" placeholder="توضیح"></textarea><button class="btn sm" id="ncretsend">ارسال</button></div></div>`;
+  document.getElementById("ncapprove").onclick=()=>{n.stage="closed";n.trail.push({type:"تأیید و بستن",from:me.id,at:Date.now()});save("nc");window.__openNc=null;nc()};
+  document.getElementById("ncreturn").onclick=()=>{document.getElementById("ncretwrap").style.display="block"};
+  document.getElementById("ncretsend").onclick=()=>{const note=document.getElementById("ncretreason").value.trim();if(!note)return;
+   n.holder=n.l1;n.stage="l1";n.trail.push({type:"بازگشت توسط ثبت‌کننده",from:me.id,to:n.l1,note,at:Date.now()});save("nc");window.__openNc=null;nc()};
+ }
 }
 function openNcModal(others){
  openModal(`<h3>ثبت عدم انطباق جدید</h3><input id="mns" placeholder="موضوع"><textarea id="mnd" rows="2" placeholder="شرح"></textarea><select id="mnto">${others.map(u=>`<option value="${u.id}">${esc(u.name)}</option>`).join("")}</select><div class="err" id="mne"></div><button class="btn sm" id="mnb">ارسال</button>`);
- $("#mnb").onclick=()=>{const su=$("#mns").value.trim(),de=$("#mnd").value.trim(),to=+$("#mnto").value;
+ $("#mnb").onclick=()=>{const su=$("#mns").value.trim(),de=$("#mnd").value.trim(),l1=+$("#mnto").value;
   if(!su||!de)return $("#mne").textContent="موضوع و شرح را وارد کنید.";
-  S.nc.push({id:nid(),subject:su,desc:de,by:me.id,at:Date.now(),to:[to],holder:to,status:"in_progress",cause:"",offenders:[],corrective:"",trail:[{by:me.id,type:"ایجاد",note:de,at:Date.now()}]});save("nc");closeModal();nc()};
+  S.nc.push({id:nid(),subject:su,desc:de,by:me.id,at:Date.now(),l1,l2:null,holder:l1,stage:"l1",cause:"",offenders:[],corrective:"",trail:[{type:"ایجاد و ارجاع",from:me.id,to:l1,note:de,at:Date.now()}]});save("nc");closeModal();nc()};
 }
 function suggUnread(){
  if(me.role=="manager")return S.suggestions.filter(s=>s.by!=me.id&&s.at>(S.suggReads[me.id]||0)).length;
  return S.suggestions.filter(s=>s.by==me.id&&s.reply&&s.replyAt>(S.suggReads[me.id]||0)).length;
 }
 function complaintsUnseen(){return S.complaints.filter(c=>!S.complaintSeen[c.id+":"+me.id]).length}
+function ncNewCount(){return S.nc.filter(n=>n.holder==me.id&&n.trail.length&&n.trail[n.trail.length-1].at>(S.ncSeen[n.id+":"+me.id]||0)).length}
 function suggestions(){
  if(suggUnread()>0){S.suggReads[me.id]=Date.now();save("suggReads")}
  if(me.role=="manager"){
@@ -920,7 +982,7 @@ function openComplaintModal(){
 }
 function ncReport(){
  const off={},cau={human:0,method:0};let open=0,closed=0;
- S.nc.forEach(n=>{n.status=="closed"?closed++:open++;if(n.cause)cau[n.cause]++;(n.offenders||[]).forEach(o=>off[o]=(off[o]||0)+1)});
+ S.nc.forEach(n=>{n.stage=="closed"?closed++:open++;if(n.cause)cau[n.cause]++;(n.offenders||[]).forEach(o=>off[o]=(off[o]||0)+1)});
  return `<div class="card"><h3>گزارش عدم انطباق‌ها</h3><p>باز: ${open} · بسته: ${closed}</p><p>نیروی انسانی: ${cau.human} · روش کار: ${cau.method}</p>
  ${Object.keys(off).length?`<p>افراد خاطی:<br>${Object.entries(off).map(([id,c])=>`${esc(uname(id))}: ${c}`).join("<br>")}</p>`:""}</div>`;
 }
