@@ -59,7 +59,7 @@ body.no-bgimg{background-image:none!important;background-color:var(--bg)}
 .modalclose{position:absolute;top:10px;left:10px;background:none;border:0;font-size:20px;cursor:pointer;color:var(--ink);line-height:1}
 .msgrow{display:flex;gap:6px;margin-bottom:10px;align-items:flex-end}
 .msgrow.me{justify-content:flex-start}
-.msgrow.other{justify-content:flex-end;flex-direction:row-reverse}
+.msgrow.other{justify-content:flex-end}
 .bubble{max-width:72%;padding:6px 10px 5px;border-radius:12px}
 .bubble.me{background:#7eafd0;color:#fff;border-bottom-left-radius:3px}
 .bubble.other{background:var(--card);border:1px solid var(--line);border-bottom-right-radius:3px}
@@ -73,21 +73,26 @@ body.no-bgimg{background-image:none!important;background-color:var(--bg)}
 .chatbar input{margin:0;flex:1}
 .igrid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px}
 .igcell{position:relative;aspect-ratio:1/1;overflow:hidden;cursor:pointer;border-radius:8px;border:2px solid var(--gold)}
-@media (max-width:640px){.ig-reply,.chat-reply{display:none}}
+@media (max-width:640px){.chat-reply{display:none}}
 .igcell img{width:100%;height:100%;object-fit:cover;display:block}
 .igframe{position:relative;width:100%;aspect-ratio:1/1;background:#000;overflow:hidden}
-.igframe img{width:100%;height:100%;object-fit:contain;display:block;animation:igslide .22s ease}
+.igframe{overflow:hidden}
+.igframe img{width:100%;height:100%;object-fit:contain;display:block;animation:igslide .25s ease-out;-webkit-user-drag:none;user-select:none}
+.igframe img.from-left{animation-name:igslideL}
+.igframe img.from-right{animation-name:igslideR}
 @keyframes igslide{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:scale(1)}}
+@keyframes igslideL{from{opacity:0;transform:translateX(-30%)}to{opacity:1;transform:translateX(0)}}
+@keyframes igslideR{from{opacity:0;transform:translateX(30%)}to{opacity:1;transform:translateX(0)}}
 .igarrow{position:absolute;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.45);color:#fff;border:0;width:30px;height:30px;border-radius:99px;font-size:18px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .igarrow.left{left:8px}.igarrow.right{right:8px}
 .igdots{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);display:flex;gap:4px}
 .igdots span{width:6px;height:6px;border-radius:99px;background:rgba(255,255,255,.5)}
 .igdots span.on{background:#fff}
-.bookgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
-.bookcard{position:relative;background:#7eafd0;border-radius:14px 4px 4px 14px;aspect-ratio:3/4;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:2px 3px 6px rgba(0,0,0,.3);padding:10px}
-.bookcard::after{content:"";position:absolute;right:6px;top:8px;bottom:8px;width:9px;background-image:radial-gradient(circle,#fff 3.2px,transparent 3.4px);background-size:9px 16px;background-repeat:repeat-y;opacity:.95;filter:drop-shadow(0 0 1px rgba(0,0,0,.4))}
+.bookgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;padding-right:14px}
+.bookcard{position:relative;background:#7eafd0;border-radius:14px 4px 4px 14px;aspect-ratio:3/4;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:2px 3px 6px rgba(0,0,0,.3);padding:8px}
+.bookcard::before{content:"";position:absolute;right:-13px;top:6px;bottom:6px;width:13px;background-image:radial-gradient(circle,#c3d3dd 4px,transparent 4.3px);background-size:13px 17px;background-repeat:repeat-y;filter:drop-shadow(1px 1px 1px rgba(0,0,0,.35))}
 .bicon{display:none}
-.btitle{background:var(--gold);color:#7eafd0;font-size:11px;font-weight:700;padding:10px 6px;border-radius:4px;text-align:center;width:75%}
+.btitle{color:#fff;font-size:15px;font-weight:800;text-align:center;text-shadow:0 1px 3px rgba(0,0,0,.6);padding:0 2px}
 </style>
 </head>
 <body>
@@ -118,8 +123,9 @@ const SUPABASE_URL="https://rmowptvcexryfaagdyzo.supabase.co";
 const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJtb3dwdHZjZXhyeWZhYWdkeXpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA4MTk0MjAsImV4cCI6MjEwNjM5NTQyMH0.LCVWMxOh04g5xlXiffS52Cydsfn9nEHsj344PjYQImY";
 let sb=null,DBSTATE="nodb";
 const save=(keys)=>{
- try{localStorage.setItem("qcdb",JSON.stringify(S))}catch(e){}
  const ks=keys?(Array.isArray(keys)?keys:[keys]):KEYS;
+ if(me&&ks.includes("users")){const idx=S.users.findIndex(u=>u.id==me.id);if(idx>-1)S.users[idx]=me}
+ try{localStorage.setItem("qcdb",JSON.stringify(S))}catch(e){}
  if(sb)ks.forEach(async k=>{try{const {error}=await sb.from("app_state").upsert({key:k,value:S[k],updated_at:new Date().toISOString()},{onConflict:"key"});if(error)DBSTATE="error"}catch(e){DBSTATE="error"}});
  toast("ذخیره شد");
 };
@@ -145,6 +151,7 @@ async function loadFromDb(){
  DBSTATE="ok";
  sb.channel("app_state_changes").on("postgres_changes",{event:"*",schema:"public",table:"app_state"},payload=>{
   const row=payload.new;if(row&&row.key){S[row.key]=row.value;
+   if(row.key=="users"&&me){const fresh=S.users.find(u=>u.id==me.id);if(fresh)me=fresh}
    const ae=document.activeElement;const typing=ae&&(ae.tagName=="INPUT"||ae.tagName=="TEXTAREA");
    if(me&&!typing)shell();
   }
@@ -295,14 +302,13 @@ function qc(){
   else hits=S.qc.filter(r=>r.o==sel.val);
  }
  const groups={};hits.forEach(r=>{(groups[r.c]=groups[r.c]||[]).push(r)});
- $("#v").innerHTML=`<div class="card"><h3>جستجو</h3><div class="row"><input id="qs" placeholder="نام مشتری، نام محصول یا شماره سفارش" value="${sel?esc(sel.val):esc(q)}">${sel?`<button class="btn sm alt" id="qclr" style="flex:0 0 auto">✕</button>`:""}${can("qc")?`<button class="btn sm" id="qnew" style="flex:0 0 auto">+ ثبت جدید</button>`:""}</div>
+ $("#v").innerHTML=`<div class="card"><h3>جستجو</h3><div class="row"><input id="qs" placeholder="نام مشتری، نام محصول یا شماره سفارش" value="${sel?esc(sel.val):esc(q)}">${can("qc")?`<button class="btn sm" id="qnew" style="flex:0 0 auto">+ ثبت جدید</button>`:""}</div>
  ${!sel&&term?(sugg.length?`<div class="card" style="padding:4px">${sugg.map(s=>`<div data-sug="${s.type}|${esc(s.val)}" style="padding:8px 6px;cursor:pointer;border-bottom:1px solid var(--line)">${s.type=="c"?"مشتری":s.type=="p"?"محصول":"سفارش"}: ${esc(s.val)}</div>`).join("")}</div>`:'<p class="meta">موردی پیدا نشد.</p>'):""}
  ${sel?(Object.keys(groups).length?Object.entries(groups).map(([cust,items])=>`<div class="card"><b>${esc(cust)}</b>${items.map((r,i)=>`<div style="margin-top:8px;border-top:1px solid var(--line);padding-top:8px">${i+1}. ${r.p?`<span class="tag">${esc(r.p)}</span> `:""}${r.o?`<span class="tag">سفارش ${esc(r.o)}</span> `:""}${esc(r.t)} ${can("qc")?`<a href="#" data-editqc="${S.qc.indexOf(r)}" style="color:var(--navy,#7eafd0)">ویرایش</a>`:""}</div>`).join("")}</div>`).join(""):'<p class="meta">موردی پیدا نشد.</p>'):(!term?'<p class="meta">برای جستجو، نام مشتری، محصول یا شماره سفارش را بنویسید.</p>':"")}
  </div>`;
  const qs=$("#qs");
  qs.oninput=()=>{window.__qcSel=null;q=qs.value;qc();const n=$("#qs");n.focus();n.setSelectionRange(n.value.length,n.value.length)};
  document.querySelectorAll("[data-sug]").forEach(d=>d.onclick=()=>{const [ty,...rest]=d.dataset.sug.split("|");window.__qcSel={type:ty,val:rest.join("|")};qc()});
- const clr=document.getElementById("qclr");if(clr)clr.onclick=()=>{window.__qcSel=null;q="";qc()};
  if(can("qc"))$("#qnew").onclick=()=>openQcModal();
  document.querySelectorAll("[data-editqc]").forEach(a=>a.onclick=(e)=>{e.preventDefault();openQcModal(+a.dataset.editqc)});
 }
@@ -332,14 +338,14 @@ function taskRow(t,forOthers){
  </div>`;
 }
 function tasks(){
- S.taskReads[me.id]=Date.now();save("taskReads");
+ if(tasksNewCount()>0){S.taskReads[me.id]=Date.now();save("taskReads")}
  if(window.__openTask)return taskDetail(window.__openTask);
  const filt=window.__taskFilter||"all";
  const match=t=>filt=="all"||(filt=="open"&&t.s!="done")||(filt=="done"&&t.s=="done");
  const mine=S.tasks.filter(t=>t.to==me.id&&match(t)).sort((a,b)=>(a.s=="done")-(b.s=="done")||b.at-a.at);
  const others=S.tasks.filter(t=>t.by==me.id&&t.to!=me.id&&match(t)).sort((a,b)=>(a.s=="done")-(b.s=="done")||b.at-a.at);
  $("#v").innerHTML=`<div class="row" style="align-items:center"><h3 style="flex:1;margin:0">کارها و وظایف</h3><button class="btn sm" id="tnew" style="flex:0 0 auto">+ وظیفه جدید</button></div>
- <div class="row" style="margin-bottom:10px">${[["all","همه"],["open","باز"],["done","انجام‌شده"]].map(([k,l])=>`<button class="btn sm ${filt==k?"":"alt"}" data-filt="${k}">${l}</button>`).join("")}</div>
+ <div style="display:flex;gap:6px;margin-bottom:10px">${[["all","همه"],["open","باز"],["done","انجام‌شده"]].map(([k,l])=>`<button class="btn sm ${filt==k?"":"alt"}" data-filt="${k}" style="flex:0 0 auto">${l}</button>`).join("")}</div>
  <div class="card"><h3>کارهای من</h3>${mine.length?mine.map(t=>taskRow(t,false)).join(""):'<p class="meta">موردی نیست.</p>'}</div>
  <div class="card"><h3>کارهای دیگران</h3>${others.length?others.map(t=>taskRow(t,true)).join(""):'<p class="meta">موردی نیست.</p>'}</div>`;
  document.querySelectorAll("[data-filt]").forEach(b=>b.onclick=()=>{window.__taskFilter=b.dataset.filt;tasks()});
@@ -352,7 +358,7 @@ function taskDetail(id){
  const trail=t.trail||[];
  $("#v").innerHTML=`<button class="btn sm alt" id="tdback" style="margin-bottom:10px">→ بازگشت</button>
  <div class="card"><h3>${esc(t.d)}</h3>
- ${trail.map((h,i)=>`<div class="card" style="${i==trail.length-1?"border:2px solid var(--navy)":""}">
+ ${trail.map((h,i)=>`<div class="card" style="${i==trail.length-1?"border:2px solid var(--navy);background:rgba(126,175,208,.2)":""}">
  <b>${esc(h.type)}</b> <span class="meta">توسط ${esc(uname(h.by))}</span>
  ${h.note?`<p>${esc(h.note)}</p>`:""}
  ${h.fileUrl?`<p><a href="${h.fileUrl}" target="_blank">${esc(h.fileName||"فایل")}</a></p>`:""}
@@ -423,7 +429,7 @@ function openShiftDetail(k,items){
 }
 function openShiftModal(){
  const todayP=persianParts(new Date());
- if(window.__shY==null){window.__shY=todayP.y;window.__shM=todayP.m;window.__shD=todayP.d}
+ window.__shY=todayP.y;window.__shM=todayP.m;window.__shD=todayP.d;
  window.__shLines=[];
  const yrs=[];for(let y=todayP.y-3;y<=todayP.y+1;y++)yrs.push(y);
  function render(){
@@ -615,15 +621,15 @@ function qcgramPost(id){
  $("#v").innerHTML=`<button class="btn sm alt" id="igback" style="margin-bottom:10px">→ بازگشت</button>
  <div class="card" style="padding:0;overflow:hidden">
  <div style="display:flex;gap:8px;align-items:center;padding:10px 12px">${avatar(p.by)}<b>${esc(uname(p.by))}</b><span class="meta">${fd(p.at,1)}</span></div>
- <div class="igframe" id="igframe"><img src="${p.images[window.__piIdx]}">
+ <div class="igframe" id="igframe"><img src="${p.images[window.__piIdx]}" draggable="false" class="${window.__igDir=="next"?"from-left":window.__igDir=="prev"?"from-right":""}">
  ${p.images.length>1?`<div class="igdots">${p.images.map((_,i)=>`<span class="${i==window.__piIdx?"on":""}"></span>`).join("")}</div>`:""}
  </div>
  <div style="padding:10px 12px">
  <button class="btn sm ${liked?"":"alt"}" id="iglike">${liked?"❤️":"🤍"}</button> <a href="#" id="iglikers" class="meta" style="color:inherit">${(p.likes||[]).length} لایک</a>
  <p>${esc(p.caption)}</p>
- ${p.comments.filter(c=>!c.parent).map(c=>`<div style="margin-top:8px;display:flex;gap:8px">${avatar(c.by)}<div style="flex:1"><b style="font-size:13px">${esc(uname(c.by))}</b><div style="font-size:13px">${esc(c.text)} <a href="#" data-clike="${c.id}" style="font-size:11px">${(c.likes||[]).includes(me.id)?"❤️":"🤍"}</a></div><div class="meta">${fd(c.at,1)} <span class="ig-reply"> · <a href="#" data-reply="${c.id}" style="color:var(--navy,#7eafd0)">پاسخ</a></span>${c.by==me.id||me.role=="manager"?` · <a href="#" data-cdel="${c.id}" style="color:#c0392b">حذف</a>`:""}</div>
+ ${p.comments.filter(c=>!c.parent).map(c=>`<div style="margin-top:8px;display:flex;gap:8px;align-items:flex-start">${avatar(c.by)}<div style="flex:1"><b style="font-size:13px">${esc(uname(c.by))}</b><div style="font-size:13px">${esc(c.text)}</div><div class="meta">${fd(c.at,1)} · <a href="#" data-reply="${c.id}" style="color:var(--navy,#7eafd0)">پاسخ</a>${c.by==me.id||me.role=="manager"?` · <a href="#" data-cdel="${c.id}" style="color:#c0392b">حذف</a>`:""}</div></div><a href="#" data-clike="${c.id}" style="flex:0 0 auto;padding-top:2px;font-size:12px">${(c.likes||[]).includes(me.id)?"❤️":"🤍"}</a>
  ${p.comments.filter(r=>r.parent==c.id).map(r=>`<div style="margin-top:6px;display:flex;gap:6px">${avatar(r.by)}<div><b style="font-size:12px">${esc(uname(r.by))}</b><div style="font-size:12px">${esc(r.text)}</div>${r.by==me.id||me.role=="manager"?`<a href="#" data-cdel="${r.id}" style="color:#c0392b;font-size:11px">حذف</a>`:""}</div></div>`).join("")}
- </div></div>`).join("")}
+ </div>`).join("")}
  <div class="row" style="margin-top:10px"><input id="igcm" placeholder="نظر شما..."><button class="btn sm" id="igcb">ارسال</button></div>
  </div></div>`;
  $("#igback").onclick=()=>{window.__openPost=null;window.__piIdx=0;qcgram()};
@@ -636,11 +642,11 @@ function qcgramPost(id){
   let sx=null;
   frame.addEventListener("touchstart",e=>{sx=e.touches[0].clientX});
   frame.addEventListener("touchend",e=>{if(sx==null)return;const dx=e.changedTouches[0].clientX-sx;
-   if(Math.abs(dx)>40){if(dx<0)window.__piIdx=(window.__piIdx+1)%p.images.length;else window.__piIdx=(window.__piIdx-1+p.images.length)%p.images.length;qcgramPost(id)}sx=null});
+   if(Math.abs(dx)>40){if(dx<0){window.__piIdx=(window.__piIdx+1)%p.images.length;window.__igDir="next"}else{window.__piIdx=(window.__piIdx-1+p.images.length)%p.images.length;window.__igDir="prev"}qcgramPost(id)}sx=null});
   let mx=null;
-  frame.addEventListener("mousedown",e=>{mx=e.clientX});
-  frame.addEventListener("mouseup",e=>{if(mx==null)return;const dx=e.clientX-mx;
-   if(Math.abs(dx)>40){if(dx<0)window.__piIdx=(window.__piIdx+1)%p.images.length;else window.__piIdx=(window.__piIdx-1+p.images.length)%p.images.length;qcgramPost(id)}mx=null});
+  frame.addEventListener("mousedown",e=>{e.preventDefault();mx=e.clientX});
+  document.addEventListener("mouseup",e=>{if(mx==null)return;const dx=e.clientX-mx;mx=null;
+   if(Math.abs(dx)>40){if(dx<0){window.__piIdx=(window.__piIdx+1)%p.images.length;window.__igDir="next"}else{window.__piIdx=(window.__piIdx-1+p.images.length)%p.images.length;window.__igDir="prev"}qcgramPost(id)}});
  }
  let replyTo=null;
  document.querySelectorAll("[data-reply]").forEach(a=>a.onclick=(e)=>{e.preventDefault();replyTo=a.dataset.reply;$("#igcm").focus()});
@@ -700,15 +706,16 @@ function groupChat(gid){
  const rows=msgs.map(m=>{const rp=m.parent?M(m.parent):null;const mine=m.from==me.id;
  const dchip=fd(m.at);let chip="";
  if(dchip!=lastDate){chip=`<div class="datechip"><span>${dchip}</span></div>`;lastDate=dchip}
- return `${chip}<div class="msgrow ${mine?"me":"other"}" data-msgid="${m.id}">
- ${!mine?avatar(m.from):""}
- <div class="bubble ${mine?"me":"other"}">
+ const bubble=`<div class="bubble ${mine?"me":"other"}">
  ${!mine?`<div class="bname">${esc(uname(m.from))}</div>`:""}
  ${rp?`<div class="meta" style="opacity:.8;border-inline-start:2px solid currentColor;padding-inline-start:6px;margin-bottom:3px">${esc(uname(rp.from))}: ${esc((rp.text||"تصویر").slice(0,40))}</div>`:""}
  ${m.image?`<img src="${m.image}" style="width:200px;height:200px;object-fit:cover;border-radius:8px;margin-bottom:3px;display:block">`:""}
  ${m.text?`<div class="btext">${esc(m.text)}${m.edited?' <span style="opacity:.6;font-size:10px">(ویرایش‌شده)</span>':""}</div>`:""}
  <div class="btime">${fd(m.at,1).split(" ").slice(-1)[0]}</div>
- </div></div>`}).join("");
+ </div>`;
+ return `${chip}<div class="msgrow ${mine?"me":"other"}" data-msgid="${m.id}">
+ ${mine?avatar(m.from)+bubble:bubble+avatar(m.from)}
+ </div>`}).join("");
  $("#v").innerHTML=`<div class="row" style="align-items:center"><button class="btn sm alt" id="gback" style="flex:0 0 auto">→ بازگشت</button><h3 style="flex:1;margin:0;cursor:pointer" id="gtitle">${esc(g.name)}</h3></div>
  <div style="max-height:60vh;overflow-y:auto;padding:4px" id="gmsgbox">${msgs.length?rows:'<p class="meta">هنوز پیامی نیست.</p>'}</div>
  <div class="meta" id="greplybox" style="display:none;margin:6px 0"></div>
@@ -739,9 +746,8 @@ function groupChat(gid){
  function closeMenu(){const gm=document.getElementById("gmenu");if(gm)gm.style.display="none"}
  function openMsgMenu(m,x,y){
   const mine=m.from==me.id;
-  const isMobile=window.innerWidth<=640;
   const items=[];
-  if(!isMobile)items.push(["پاسخ",()=>{setReply(m.id);closeMenu()}]);
+  items.push(["پاسخ",()=>{setReply(m.id);closeMenu()}]);
   if(m.image){items.push(["اشتراک‌گذاری",async()=>{closeMenu();if(navigator.share){try{await navigator.share({url:m.image})}catch(e){}}else{navigator.clipboard&&navigator.clipboard.writeText(m.image)}}])}
   else{if(m.text)items.push(["کپی",()=>{navigator.clipboard&&navigator.clipboard.writeText(m.text);closeMenu()}]);
    if(mine&&m.text)items.push(["ویرایش",()=>{closeMenu();startEdit(m)}]);}
@@ -854,7 +860,7 @@ function suggUnread(){
 }
 function complaintsUnseen(){return S.complaints.filter(c=>!S.complaintSeen[c.id+":"+me.id]).length}
 function suggestions(){
- S.suggReads[me.id]=Date.now();save("suggReads");
+ if(suggUnread()>0){S.suggReads[me.id]=Date.now();save("suggReads")}
  if(me.role=="manager"){
   const list=S.suggestions.slice().reverse();
   $("#v").innerHTML=`<h3>صندوق انتقادات و پیشنهادات</h3>
@@ -876,7 +882,7 @@ function complaints(){
  if(openId){
   const c=S.complaints.find(x=>x.id==openId);
   if(c){
-   S.complaintSeen[c.id+":"+me.id]=true;save("complaintSeen");
+   if(!S.complaintSeen[c.id+":"+me.id]){S.complaintSeen[c.id+":"+me.id]=true;save("complaintSeen")}
    $("#v").innerHTML=`<button class="btn sm alt" id="cxback" style="margin-bottom:12px">→ بازگشت</button>
    <div class="card"><h3>${esc(c.subject)}</h3><p>${esc(c.text)}</p>
    ${c.images&&c.images.length?`<div style="display:flex;gap:6px;overflow-x:auto">${c.images.map(im=>`<img src="${im}" style="width:70%;flex:0 0 auto;max-height:220px;object-fit:cover;border-radius:8px">`).join("")}</div>`:""}
@@ -909,4 +915,4 @@ function ncReport(){
 boot();
 </script>
 </body>
- </html>
+</html>
