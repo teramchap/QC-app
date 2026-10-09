@@ -613,6 +613,34 @@ function qcgram(){
  $("#v").innerHTML=S.posts.length?`<div class="igrid">${S.posts.slice().reverse().map(p=>`<div class="igcell" data-op="${p.id}"><img src="${p.images[0]}"></div>`).join("")}</div>`:'<p class="meta">هنوز پستی منتشر نشده است.</p>';
  document.querySelectorAll("[data-op]").forEach(c=>c.onclick=()=>{window.__openPost=+c.dataset.op;window.__piIdx=0;qcgram()});
 }
+function renderOneComment(c,isReply){
+ const liked=(c.likes||[]).includes(me.id);
+ const nameSize=isReply?12:13;
+ let html="";
+ html+='<div style="margin-top:'+(isReply?6:10)+'px;padding-inline-start:'+(isReply?30:0)+'px">';
+ html+='<div style="display:flex;align-items:center;gap:6px">';
+ html+=avatar(c.by,isReply?20:26);
+ html+='<b style="font-size:'+nameSize+'px">'+esc(uname(c.by))+'</b>';
+ html+='</div>';
+ html+='<div style="font-size:'+nameSize+'px;margin-top:2px">'+esc(c.text)+'</div>';
+ html+='<div class="meta">'+fd(c.at,1);
+ html+=' · <a href="#" data-clike="'+c.id+'" style="text-decoration:none">'+(liked?"❤️":"🤍")+'</a>';
+ if(!isReply)html+=' · <a href="#" data-reply="'+c.id+'" style="color:var(--navy,#7eafd0)">پاسخ</a>';
+ if(c.by==me.id||me.role=="manager")html+=' · <a href="#" data-cdel="'+c.id+'" style="color:#c0392b">حذف</a>';
+ html+='</div>';
+ html+='</div>';
+ return html;
+}
+function renderCommentList(p){
+ const tops=p.comments.filter(c=>!c.parent);
+ if(!tops.length)return"";
+ let html="";
+ tops.forEach(c=>{
+  html+=renderOneComment(c,false);
+  p.comments.filter(r=>r.parent==c.id).forEach(r=>{html+=renderOneComment(r,true)});
+ });
+ return html;
+}
 function qcgramPost(id){
  const p=S.posts.find(x=>x.id==id);
  if(!p){window.__openPost=null;return qcgram()}
@@ -627,9 +655,7 @@ function qcgramPost(id){
  <div style="padding:10px 12px">
  <button class="btn sm ${liked?"":"alt"}" id="iglike">${liked?"❤️":"🤍"}</button> <a href="#" id="iglikers" class="meta" style="color:inherit">${(p.likes||[]).length} لایک</a>
  <p>${esc(p.caption)}</p>
- ${p.comments.filter(c=>!c.parent).map(c=>`<div style="margin-top:8px;display:flex;gap:8px">${avatar(c.by)}<div style="flex:1"><b style="font-size:13px">${esc(uname(c.by))}</b><div style="font-size:13px;display:flex;justify-content:space-between;align-items:center;gap:6px"><span>${esc(c.text)}</span><a href="#" data-clike="${c.id}" style="flex:0 0 auto;font-size:12px;text-decoration:none">${(c.likes||[]).includes(me.id)?"❤️":"🤍"}</a></div><div class="meta">${fd(c.at,1)} · <a href="#" data-reply="${c.id}" style="color:var(--navy,#7eafd0)">پاسخ</a>${c.by==me.id||me.role=="manager"?` · <a href="#" data-cdel="${c.id}" style="color:#c0392b">حذف</a>`:""}</div></div>
- ${p.comments.filter(r=>r.parent==c.id).map(r=>`<div style="margin-top:6px;display:flex;gap:6px">${avatar(r.by)}<div><b style="font-size:12px">${esc(uname(r.by))}</b><div style="font-size:12px">${esc(r.text)}</div>${r.by==me.id||me.role=="manager"?`<a href="#" data-cdel="${r.id}" style="color:#c0392b;font-size:11px">حذف</a>`:""}</div></div>`).join("")}
- </div>`).join("")}
+ <div id="igcomments">${renderCommentList(p)}</div>
  <div class="row" style="margin-top:10px"><input id="igcm" placeholder="نظر شما..."><button class="btn sm" id="igcb">ارسال</button></div>
  </div></div>`;
  $("#igback").onclick=()=>{window.__openPost=null;window.__piIdx=0;qcgram()};
