@@ -11,7 +11,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
-:root{--navy:#d91c2e;--accent:#d91c2e;--gold:#ffffff;--gray:#6b6f76;--page:#cfcfd0;--bg:#cfcfd0;--card:#FFFFFF;--ink:#222222;--line:#e3e3e3;--ok:#1f7a5a;--warn:#b7791f;--bar:#161618;--input:#f3f4f6;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+:root{--navy:#d91c2e;--accent:#d91c2e;--gold:#ffffff;--gray:#6b6f76;--page:#cfcfd0;--bg:#cfcfd0;--card:#FFFFFF;--ink:#222222;--line:#e3e3e3;--ok:#1f7a5a;--warn:#b7791f;--bar:#161618;--input:#f3f4f6;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px)}
 :root[data-theme="dark"]{--navy:#000000;--accent:#d91c2e;--gold:#f0f0f0;--page:#08080a;--bg:#08080a;--card:#3c3f48;--ink:#f0f0f0;--line:#515257;--gray:#a8aab2;--bar:#000000;--input:#292c31}
 *{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
 body{margin:0;font-family:Vazirmatn,Tahoma,sans-serif;color:var(--ink);line-height:1.8;background:var(--bg);background-size:cover;background-position:center;background-attachment:fixed}
@@ -24,8 +24,8 @@ header small{opacity:.75}
 .ribbon{position:absolute;top:8px;left:-24px;background:#d91c2e;color:#fff;font-size:8px;padding:2px 24px;transform:rotate(-45deg);z-index:2}
 .menugrid button .ic{width:20px;height:20px}
 .menugrid button .ic svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.6}
-main{max-width:860px;margin:0 auto;padding:16px;padding-bottom:78px;display:flex;flex-direction:column;min-height:calc(100vh - 120px)}
-.bottombar{position:fixed;bottom:0;left:0;right:0;display:flex;align-items:center;justify-content:space-evenly;height:54px;background:var(--bar);border-top:1px solid #000;padding-bottom:env(safe-area-inset-bottom,0px);z-index:6;max-width:860px;margin:0 auto}
+main{max-width:860px;margin:0 auto;padding:16px;padding-bottom:calc(78px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;min-height:calc(100vh - 120px)}
+.bottombar{position:fixed;bottom:0;left:0;right:0;display:flex;align-items:center;justify-content:space-evenly;height:calc(54px + env(safe-area-inset-bottom,0px));background:var(--bar);border-top:1px solid #000;padding-bottom:env(safe-area-inset-bottom,0px);z-index:6;max-width:860px;margin:0 auto}
 .bottombar button{flex:0 0 auto;display:flex;align-items:center;justify-content:center;border:0;background:none;padding:8px;border-radius:99px;cursor:pointer;color:#fff}
 .bottombar button .ic{width:26px;height:26px;display:block}
 .bottombar button .ic svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.6}
@@ -68,7 +68,7 @@ body.no-bgimg{background-image:none!important;background-color:var(--bg)}
 .bubble .btime{font-size:10px;opacity:.7;text-align:left;margin-top:3px}
 .datechip{text-align:center;margin:10px 0;position:sticky;top:0;z-index:3}
 .datechip span{background:var(--accent);color:#fff;padding:3px 12px;border-radius:99px;font-size:11px}
-.chatbar{position:fixed;left:0;right:0;bottom:54px;max-width:860px;margin:0 auto;background:var(--card);border-top:1px solid var(--line);padding:8px 10px;display:flex;align-items:center;gap:4px;z-index:5}
+.chatbar{position:fixed;left:0;right:0;bottom:calc(54px + env(safe-area-inset-bottom,0px));max-width:860px;margin:0 auto;background:var(--card);border-top:1px solid var(--line);padding:8px 10px;display:flex;align-items:center;gap:4px;z-index:5}
 .chatbar input{margin:0;flex:1}
 .igrid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px}
 .igcell{position:relative;aspect-ratio:1/1;overflow:hidden;cursor:pointer;border-radius:8px;border:2px solid var(--accent)}
@@ -138,6 +138,13 @@ header{background:linear-gradient(135deg,#ee2b3f,#c0152a)}
 .bottombar button.home .ic{width:62px;height:62px;margin-top:-30px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--bar);border:3px solid var(--accent);box-shadow:0 0 0 5px var(--bar),0 6px 14px rgba(0,0,0,.45);transition:background .2s}
 .bottombar button.home .ic svg{width:32px;height:32px}
 .bottombar button.home.on .ic{background:linear-gradient(145deg,#ee2b3f,#c0152a)}
+/* fill the area under the nav bar (home-indicator / system-bar zone) */
+html{background:var(--bg)}
+body:not(.no-bgimg)::after{content:"";position:fixed;left:0;right:0;bottom:0;height:calc(env(safe-area-inset-bottom,0px) + 2px);background:var(--bar);z-index:5;pointer-events:none}
+/* theme switch: fixed compact size (was stretched by .row>*) */
+.row>.switch,.switch{flex:0 0 48px;min-width:48px;width:48px;height:28px}
+.slider::before{width:22px;height:22px;top:3px;right:3px}
+.switch input:checked+.slider::before{transform:translateX(-20px)}
 </style>
 </head>
 <body>
