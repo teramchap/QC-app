@@ -145,6 +145,37 @@ body:not(.no-bgimg)::after{content:"";position:fixed;left:0;right:0;bottom:0;hei
 .row>.switch,.switch{flex:0 0 48px;min-width:48px;width:48px;height:28px}
 .slider::before{width:22px;height:22px;top:3px;right:3px}
 .switch input:checked+.slider::before{transform:translateX(-20px)}
+
+/* org chart */
+:root{--oline:#9aa0ac}
+:root[data-theme="dark"]{--oline:#6f7480}
+.olegend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-bottom:6px}
+.olegend span{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--gray)}
+.olegend i{width:10px;height:10px;border-radius:50%;background:var(--rc);display:inline-block}
+.otree,.otree ul{list-style:none;margin:0;padding:0}
+.otree ul{margin-inline-start:30px;padding-inline-start:22px}
+.otree li{position:relative;padding-top:10px}
+.otree ul>li::before{content:"";position:absolute;inset-inline-start:-22px;top:0;height:37px;width:22px;border-bottom:2px solid var(--oline);border-inline-start:2px solid var(--oline);border-end-start-radius:14px}
+.otree ul>li:not(:last-child)::after{content:"";position:absolute;inset-inline-start:-22px;top:0;bottom:0;border-inline-start:2px solid var(--oline)}
+.otree li.collapsed>ul{display:none}
+.onode{display:flex;align-items:center;gap:10px;background:var(--bg);border:1px solid var(--line);border-inline-start:4px solid var(--rc);border-radius:14px;padding:8px 10px;box-shadow:0 2px 6px rgba(0,0,0,.12)}
+.oinfo{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:2px}
+.oinfo b{font-size:15px;line-height:1.5}
+.ocount{font-size:12px;color:var(--gray);white-space:nowrap}
+.otog{background:none;border:0;padding:4px;cursor:pointer;color:var(--ink);display:flex}
+.otog svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s}
+.otree li.collapsed>.onode .otog svg{transform:rotate(90deg)}
+
+/* org chart: compact sizing */
+.otree ul{margin-inline-start:24px;padding-inline-start:12px}
+.otree li{padding-top:8px}
+.otree ul>li::before{inset-inline-start:-12px;width:12px;height:30px;border-end-start-radius:10px}
+.otree ul>li:not(:last-child)::after{inset-inline-start:-12px}
+.onode{gap:8px;padding:6px 8px;border-inline-start-width:3px;border-radius:12px}
+.oinfo b{font-size:14px;line-height:1.45}
+.oinfo .tag{white-space:nowrap;font-size:11px;padding:0 8px;line-height:1.6}
+.ocount{font-size:11px}
+.otog{padding:2px}
 </style>
 </head>
 <body>
@@ -628,14 +659,26 @@ function renderAdminGram(BK2){
  document.querySelectorAll("[data-esave]").forEach(b=>b.onclick=()=>{const id=+b.dataset.esave;const p=S.posts.find(x=>x.id==id);p.caption=document.querySelector(`[data-ecap="${id}"]`).value.trim();window.__editPost=null;save("posts");renderAdminGram(BK2)});
  document.querySelectorAll("[data-pdel]").forEach(b=>b.onclick=()=>{if(!confirm("حذف این پست؟"))return;S.posts=S.posts.filter(x=>x.id!=+b.dataset.pdel);save("posts");renderAdminGram(BK2)});
 }
+window.__chartCollapsed=window.__chartCollapsed||{};
+function toggleChart(btn){const li=btn.closest("li");const id=li.dataset.uid;window.__chartCollapsed[id]=!window.__chartCollapsed[id];li.classList.toggle("collapsed",!!window.__chartCollapsed[id])}
 function chartTree(){
+ const act=S.users.filter(u=>u.on),ids=new Set(act.map(u=>u.id));
  const byParent={};
- S.users.filter(u=>u.on).forEach(u=>{const p=S.chart[u.id]||"";(byParent[p]=byParent[p]||[]).push(u)});
- function render(pid,depth){
-  return (byParent[pid]||[]).map(u=>`<div style="padding-inline-start:${depth*20}px;padding:4px 0">${depth?"└ ":""}<b>${esc(u.name)}</b> <span class="tag">${ROLES[u.role]}</span></div>${render(u.id,depth+1)}`).join("");
+ act.forEach(u=>{let p=S.chart[u.id];if(!p||!ids.has(+p)||p==u.id)p="";(byParent[p]=byParent[p]||[]).push(u)});
+ if(!act.length)return '<p class="meta">هنوز چارتی تعریف نشده است.</p>';
+ const RC={manager:"#d91c2e",supervisor:"#e08a1e",senior:"#2f7fd0",expert:"#7b8190"};
+ const seen=new Set();
+ const chev='<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>';
+ function node(u){
+  seen.add(u.id);
+  const kids=(byParent[u.id]||[]).filter(k=>!seen.has(k.id));
+  const col=window.__chartCollapsed[u.id];
+  return `<li data-uid="${u.id}" class="${col?"collapsed":""}"><div class="onode" style="--rc:${RC[u.role]||"#7b8190"}">${avatar(u.id,30)}<div class="oinfo"><b>${esc(u.name)}</b><span class="tag">${ROLES[u.role]}</span></div>${kids.length?`<span class="ocount">${kids.length.toLocaleString("fa-IR")} نفر</span><button type="button" class="otog" onclick="toggleChart(this)" aria-label="باز و بسته کردن">${chev}</button>`:""}</div>${kids.length?`<ul>${kids.map(node).join("")}</ul>`:""}</li>`;
  }
- const tree=render("",0);
- return tree||'<p class="meta">هنوز چارتی تعریف نشده است.</p>';
+ let html=(byParent[""]||[]).map(node).join("");
+ html+=act.filter(u=>!seen.has(u.id)).map(node).join("");
+ const legend=Object.keys(ROLES).map(r=>{const n=act.filter(u=>u.role==r).length;return n?`<span style="--rc:${RC[r]}"><i></i>${ROLES[r]} (${n.toLocaleString("fa-IR")})</span>`:""}).join("");
+ return `<div class="olegend">${legend}</div><ul class="otree">${html}</ul>`;
 }
 function fileToDataURL(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(f)})}
 function avatar(uid,size){size=size||26;const u=S.users.find(x=>x.id==uid);if(u&&u.photo)return `<img src="${u.photo}" style="width:${size}px;height:${size}px;border-radius:99px;object-fit:cover;flex:0 0 auto">`;const n=(u?u.name:"?").trim()[0]||"?";return `<span style="display:inline-flex;align-items:center;justify-content:center;width:${size}px;height:${size}px;border-radius:99px;background:var(--accent,#d91c2e);color:#fff;font-size:${Math.round(size*0.45)}px;flex:0 0 auto">${esc(n)}</span>`}
@@ -1083,6 +1126,40 @@ function ncReport(){
  ${Object.keys(off).length?`<p>افراد خاطی:<br>${Object.entries(off).map(([id,c])=>`${esc(uname(id))}: ${c}`).join("<br>")}</p>`:""}</div>`;
 }
 
+
+/* ---- Android back button: go back one page instead of closing the app ---- */
+(function(){
+ const FLAGS=["__openNc","__openPost","__adminSub","__adminHomeSub","__openTask","__openGroup","__openComplaint","__editUser","__editPost","__qcSel"];
+ let stack=[],timer=null;
+ const snap=()=>JSON.stringify({t:tab,f:FLAGS.map(k=>window[k]||null)});
+ const isRoot=o=>o.t==="home"&&o.f.every(v=>!v);
+ function record(){
+  if(!document.getElementById("v")){stack=[];return}
+  if(document.getElementById("modalbg"))return;
+  const s=snap();
+  if(isRoot(JSON.parse(s))){stack=[s];return}
+  if(stack[stack.length-1]===s)return;
+  if(!stack.length)stack.push(JSON.stringify({t:"home",f:FLAGS.map(()=>null)}));
+  stack.push(s);if(stack.length>40)stack.shift();
+ }
+ function restore(s){const o=JSON.parse(s);tab=o.t;FLAGS.forEach((k,i)=>{window[k]=o.f[i]||undefined});shell()}
+ window.appBack=function(){
+  if(document.getElementById("modalbg")){closeModal();return true}
+  if(!document.getElementById("v"))return false;
+  if(isRoot(JSON.parse(snap())))return false;
+  if(stack.length>1){stack.pop();restore(stack[stack.length-1]);return true}
+  stack=[];tab="home";FLAGS.forEach(k=>{window[k]=undefined});shell();return true;
+ };
+ new MutationObserver(()=>{clearTimeout(timer);timer=setTimeout(record,30)}).observe(document.getElementById("app"),{childList:true,subtree:true});
+ const cap=window.Capacitor;
+ if(cap&&cap.isNativePlatform&&cap.isNativePlatform()){
+  const AppP=(cap.Plugins&&cap.Plugins.App)||cap.registerPlugin("App");
+  AppP.addListener("backButton",()=>{if(!window.appBack())AppP.exitApp()});
+ }else{
+  history.pushState({g:1},"");
+  addEventListener("popstate",()=>{if(window.appBack())history.pushState({g:1},"");else history.back()});
+ }
+})();
 
 boot();
 </script>
