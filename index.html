@@ -325,21 +325,37 @@ function pushPlugin(){
 async function registerToken(){try{if(sb&&me&&window.__pushToken)await sb.rpc("register_device",{p_uid:me.id,p_token:window.__pushToken})}catch(e){}}
 function unregisterDevice(){try{if(sb&&window.__pushToken)sb.rpc("unregister_device",{p_token:window.__pushToken}).then(()=>{},()=>{})}catch(e){}}
 function openFromPush(d){try{if(!me||!d||!d.tab)return;window.__openGroup=d.gid?+d.gid:undefined;tab=d.tab;shell()}catch(e){}}
+function pushSet(st){try{localStorage.setItem("qcpushstate",st)}catch(e){}}
+function pushDone(){try{localStorage.removeItem("qcpushpending")}catch(e){}}
 async function initPush(){
  try{
-  const PN=pushPlugin();if(!PN)return;
+  const PN=pushPlugin();
+  if(!PN){pushSet("plugin-unavailable");return}
+  /* if the previous attempt never finished (e.g. the app closed itself), do not try again automatically */
+  if(localStorage.getItem("qcpushpending")==="1"){pushSet("disabled-after-crash");return}
+  localStorage.setItem("qcpushpending","1");
   if(!window.__pushBound){
    window.__pushBound=true;
-   PN.addListener("registration",t=>{window.__pushToken=t.value;registerToken()});
+   PN.addListener("registration",t=>{window.__pushToken=t.value;pushSet("ok");pushDone();registerToken()});
+   PN.addListener("registrationError",e=>{pushSet("error: "+((e&&(e.error||e.message))||"unknown"));pushDone()});
    PN.addListener("pushNotificationReceived",n=>{toast((n.title||"")+(n.body?": "+n.body:""))});
    PN.addListener("pushNotificationActionPerformed",a=>{openFromPush((a.notification&&a.notification.data)||{})});
   }
   let p=await PN.checkPermissions();
   if(p.receive!=="granted")p=await PN.requestPermissions();
-  if(p.receive!=="granted")return;
+  if(p.receive!=="granted"){pushSet("denied");pushDone();return}
   try{await PN.createChannel({id:"qc_default",name:"اعلان‌های سامانه",description:"اعلان‌های سامانه کنترل کیفیت",importance:4,visibility:1,vibration:true})}catch(e){}
   await PN.register();
- }catch(e){}
+ }catch(e){pushSet("error: "+String((e&&e.message)||e).slice(0,100));pushDone()}
+}
+function retryPush(){try{localStorage.removeItem("qcpushpending");localStorage.removeItem("qcpushstate")}catch(e){}window.__pushToken=null;initPush();toast("در حال فعال‌سازی اعلان…")}
+function pushCard(){
+ const c=window.Capacitor;
+ if(!c||!c.isNativePlatform||!c.isNativePlatform())return "";
+ const st=localStorage.getItem("qcpushstate")||"unknown";
+ const T={ok:"فعال ✓","plugin-unavailable":"این نسخه‌ی برنامه اعلان ندارد","denied":"اجازه‌ی اعلان داده نشده؛ از تنظیمات گوشی فعالش کنید","disabled-after-crash":"غیرفعال شد، چون در تلاش قبلی برنامه بسته شد","unknown":"هنوز بررسی نشده"};
+ const txt=T[st]||(st.indexOf("error")==0?"خطا: "+st.slice(6,120):st);
+ return `<div class="card"><h3>اعلان‌ها</h3><p class="meta" style="margin-bottom:8px">${esc(txt)}</p>${st!=="ok"&&st!=="plugin-unavailable"?'<button class="btn sm" onclick="retryPush()">تلاش دوباره</button>':""}</div>`;
 }
 function ensurePush(){if(window.__pushToken)registerToken();else initPush()}
 function shell(){
@@ -726,7 +742,7 @@ function profile(){
  <p class="meta">${esc(me.user)} · ${ROLES[me.role]}</p>
  </div>
  <div class="card"><div class="row" style="align-items:center;flex-wrap:nowrap"><span style="flex:1;min-width:0;font-weight:700">🌙 قالب تیره</span><label class="switch"><input type="checkbox" id="pdark" ${document.documentElement.getAttribute("data-theme")=="dark"?"checked":""}><span class="slider"></span></label></div></div>
- <div class="card"><h3>تغییر رمز عبور</h3>
+ ${pushCard()}<div class="card"><h3>تغییر رمز عبور</h3>
  <input type="password" id="ppw1" placeholder="رمز عبور فعلی">
  <input type="password" id="ppw2" placeholder="رمز عبور جدید">
  <input type="password" id="ppw3" placeholder="تکرار رمز عبور جدید">
