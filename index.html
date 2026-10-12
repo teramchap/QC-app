@@ -306,8 +306,45 @@ function openForgotBox(){
   };
  };
 }
+/* ---- push notifications (Android app) ---- */
+const usersWith=p=>S.users.filter(u=>u.on&&(u.role=="manager"||(S.perms[p]||[]).includes(u.role))).map(u=>u.id);
+function notify(to,title,body,data){
+ try{
+  if(!sb||!me)return;
+  const ids=(to==="all"?S.users.filter(u=>u.on).map(u=>u.id):[].concat(to)).map(Number).filter(id=>id&&id!==me.id);
+  if(!ids.length)return;
+  sb.functions.invoke("notify",{body:{from:me.id,to:ids,title,body:String(body||"").slice(0,140),data:data||{}}}).then(()=>{},()=>{});
+ }catch(e){}
+}
+function pushPlugin(){
+ const c=window.Capacitor;
+ if(!c||!c.isNativePlatform||!c.isNativePlatform())return null;
+ if(c.isPluginAvailable&&!c.isPluginAvailable("PushNotifications"))return null;
+ return (c.Plugins&&c.Plugins.PushNotifications)||c.registerPlugin("PushNotifications");
+}
+async function registerToken(){try{if(sb&&me&&window.__pushToken)await sb.rpc("register_device",{p_uid:me.id,p_token:window.__pushToken})}catch(e){}}
+function unregisterDevice(){try{if(sb&&window.__pushToken)sb.rpc("unregister_device",{p_token:window.__pushToken}).then(()=>{},()=>{})}catch(e){}}
+function openFromPush(d){try{if(!me||!d||!d.tab)return;window.__openGroup=d.gid?+d.gid:undefined;tab=d.tab;shell()}catch(e){}}
+async function initPush(){
+ try{
+  const PN=pushPlugin();if(!PN)return;
+  if(!window.__pushBound){
+   window.__pushBound=true;
+   PN.addListener("registration",t=>{window.__pushToken=t.value;registerToken()});
+   PN.addListener("pushNotificationReceived",n=>{toast((n.title||"")+(n.body?": "+n.body:""))});
+   PN.addListener("pushNotificationActionPerformed",a=>{openFromPush((a.notification&&a.notification.data)||{})});
+  }
+  let p=await PN.checkPermissions();
+  if(p.receive!=="granted")p=await PN.requestPermissions();
+  if(p.receive!=="granted")return;
+  try{await PN.createChannel({id:"qc_default",name:"اعلان‌های سامانه",description:"اعلان‌های سامانه کنترل کیفیت",importance:4,visibility:1,vibration:true})}catch(e){}
+  await PN.register();
+ }catch(e){}
+}
+function ensurePush(){if(window.__pushToken)registerToken();else initPush()}
 function shell(){
  document.body.classList.remove("no-bgimg");
+ if(me&&window.__pushUid!==me.id){window.__pushUid=me.id;ensurePush()}
  $("#app").innerHTML=`<header><label id="pfl" style="cursor:pointer;z-index:1">${avatar(me.id,40)}<input type="file" id="pf" accept="image/*" style="display:none"></label><h1 style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);margin:0">سامانه کنترل کیفیت</h1><span title="${DBSTATE=="ok"?"اتصال به حافظه‌ی مشترک برقرار است":DBSTATE=="error"?"اتصال برقرار نشد؛ فقط ذخیره‌ی محلی":"حالت آفلاین/محلی؛ اطلاعات مشترک نیست"}" style="z-index:1;width:10px;height:10px;border-radius:99px;background:${DBSTATE=="ok"?"#1f7a5a":"#b7791f"}"></span><img src="${LOGO_W}" style="height:40px;width:auto;z-index:1;margin-inline-start:auto"></header>
  <main id="v"></main>
  <div class="bottombar">
@@ -317,7 +354,7 @@ function shell(){
  <button class="${tab=="qcgram"?"on":""}" data-bt="qcgram" aria-label="QCgram"><span class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="14" rx="2"/><path d="M8 6l1.5-3h5L16 6"/><circle cx="12" cy="13" r="3.5"/></svg></span></button>
  <button id="bblo" aria-label="خروج"><span class="ic"><svg viewBox="0 0 24 24"><path d="M15 4H6v16h9"/><path d="M10 12h10m0 0l-3-3m3 3l-3 3"/></svg></span></button>
  </div>`;
- $("#bblo").onclick=()=>{if(!confirm("مطمئن هستید می‌خواهید خارج شوید؟"))return;me=null;try{localStorage.removeItem("qcuid")}catch(e){}login()};
+ $("#bblo").onclick=()=>{if(!confirm("مطمئن هستید می‌خواهید خارج شوید؟"))return;unregisterDevice();me=null;window.__pushUid=null;try{localStorage.removeItem("qcuid")}catch(e){}login()};
  $("#pf").onchange=async()=>{const f=$("#pf").files[0];if(!f)return;const url=await uploadImage(f);me.photo=url;save("users");shell()};
  document.querySelectorAll(".bottombar [data-bt]").forEach(b=>b.onclick=()=>{tab=b.dataset.bt;if(tab=="qcgram"){window.__openPost=null;window.__piIdx=0}shell()});
  ({home,qc,tasks,shift,qcgram,colleague,train,nc,admin,profile,announce,occasion,suggestions,complaints})[tab]();
@@ -465,20 +502,20 @@ function taskDetail(id){
   t.trail=t.trail||[];
   t.trail.push({type:t.by==t.to?"انجام":"پاسخ",by:me.id,note,fileUrl,fileName,at:Date.now()});
   t.doneAt=Date.now();
-  if(t.by==t.to){t.s="done";t.closeAt=Date.now()}else t.s="wait";
+  if(t.by==t.to){t.s="done";t.closeAt=Date.now()}else{t.s="wait";notify(t.by,"وظیفه انجام شد، منتظر تأیید شما",me.name+": "+(t.d||""),{tab:"tasks"})}
   save("tasks");taskDetail(id);
  };
  const okBtn=document.getElementById("tdok");
- if(okBtn)okBtn.onclick=()=>{t.trail=t.trail||[];t.trail.push({type:"تایید",by:me.id,at:Date.now()});t.s="done";t.closeAt=Date.now();save("tasks");taskDetail(id)};
+ if(okBtn)okBtn.onclick=()=>{t.trail=t.trail||[];t.trail.push({type:"تایید",by:me.id,at:Date.now()});t.s="done";t.closeAt=Date.now();notify(t.to,"وظیفه‌ی شما تأیید شد",t.d||"",{tab:"tasks"});save("tasks");taskDetail(id)};
  const retBtn=document.getElementById("tdret");
  if(retBtn)retBtn.onclick=()=>{const reason=prompt("توضیحات لازم برای بازگشت را بنویسید:");if(!reason||!reason.trim())return;
-  t.trail=t.trail||[];t.trail.push({type:"بازگشت",by:me.id,note:reason.trim(),at:Date.now()});t.s="open";t.returnReason=reason.trim();save("tasks");taskDetail(id)};
+  t.trail=t.trail||[];t.trail.push({type:"بازگشت",by:me.id,note:reason.trim(),at:Date.now()});t.s="open";t.returnReason=reason.trim();notify(t.to,"وظیفه برای اصلاح برگشت داده شد",reason.trim(),{tab:"tasks"});save("tasks");taskDetail(id)};
 }
 function openTaskModal(){
  const others=S.users.filter(u=>u.on&&(u.id==me.id||can("assign"))).sort((a,b)=>(a.id==me.id)?-1:(b.id==me.id)?1:0);
  openModal(`<h3>تعریف کار جدید</h3><select id="mtt">${others.map(u=>`<option value="${u.id}">${u.id==me.id?"برای خودم":esc(u.name)}</option>`).join("")}</select><textarea id="mtd" rows="3" placeholder="شرح کامل درخواست"></textarea><button class="btn" id="mtb">ثبت کار</button>`);
  $("#mtb").onclick=()=>{const d=$("#mtd").value.trim();if(!d)return;const to=+$("#mtt").value;
-  S.tasks.push({id:nid(),to,by:me.id,d,s:"open",at:Date.now(),trail:[{type:"تعریف",by:me.id,note:d,at:Date.now()}]});save("tasks");closeModal();tasks()};
+  S.tasks.push({id:nid(),to,by:me.id,d,s:"open",at:Date.now(),trail:[{type:"تعریف",by:me.id,note:d,at:Date.now()}]});notify(to,"وظیفه‌ی جدید",me.name+": "+d,{tab:"tasks"});save("tasks");closeModal();tasks()};
 }
 
 const JMONTHS=["فروردین","اردیبهشت","خرداد","تیر","مرداد","شهریور","مهر","آبان","آذر","دی","بهمن","اسفند"];
@@ -543,7 +580,7 @@ function openShiftModal(){
    const iso=isoFromJalali(window.__shY,window.__shM,window.__shD);
    const k=iso+"|"+$("#mss").value;
    window.__shLines.forEach(t=>S.shifts.push({id:nid(),date:iso,sh:$("#mss").value,t,by:me.id,at:Date.now()}));
-   save("shifts");closeModal();shift()};
+   notify(usersWith("shiftconfirm"),"تحویل شیفت جدید",me.name+" گزارش شیفت ثبت کرد",{tab:"shift"});save("shifts");closeModal();shift()};
  }
  openModal(render());wire();
 }
@@ -627,7 +664,7 @@ function renderAdminAnn(BK2){
  <textarea id="aat" rows="3" placeholder="متن اعلان">${la?esc(la.text):""}</textarea>
  <button class="btn sm" id="aab">به‌روزرسانی</button> ${la?`<button class="btn sm alt" id="aad">حذف</button>`:""}</div>`;
  $("#abk2").onclick=()=>{window.__adminHomeSub=null;admin()};
- $("#aab").onclick=()=>{const t=$("#aat").value.trim();if(!t)return;S.announcement={text:t,by:me.id,at:Date.now()};save("announcement");renderAdminAnn(BK2)};
+ $("#aab").onclick=()=>{const t=$("#aat").value.trim();if(!t)return;S.announcement={text:t,by:me.id,at:Date.now()};notify("all","اعلان جدید",t,{tab:"announce"});save("announcement");renderAdminAnn(BK2)};
  const dbtn=document.getElementById("aad");if(dbtn)dbtn.onclick=()=>{S.announcement=null;save("announcement");renderAdminAnn(BK2)};
 }
 function renderAdminOcc(BK2){
@@ -641,7 +678,7 @@ function renderAdminOcc(BK2){
  $("#ocb").onclick=async()=>{const f=$("#oci").files[0];const cap=$("#occ").value.trim();
   if(!f)return $("#oce").textContent="یک تصویر انتخاب کنید.";
   const image=await uploadImage(f);
-  S.occasion={image,caption:cap,by:me.id,at:Date.now(),likes:[],comments:[]};save("occasion");renderAdminOcc(BK2)};
+  S.occasion={image,caption:cap,by:me.id,at:Date.now(),likes:[],comments:[]};notify("all","مناسبت جدید",cap||"مناسبت جدید ثبت شد",{tab:"occasion"});save("occasion");renderAdminOcc(BK2)};
 }
 function renderAdminGram(BK2){
  $("#v").innerHTML=`${BK2}<div class="card"><h3>پست جدید QCgram</h3><input type="file" id="gi" accept="image/*" multiple><textarea id="gc" rows="2" placeholder="کپشن"></textarea><div class="err" id="ge"></div><button class="btn sm" id="gb">انتشار</button></div>
@@ -654,7 +691,7 @@ function renderAdminGram(BK2){
  $("#gb").onclick=async()=>{const files=[...$("#gi").files].slice(0,10);const cap=$("#gc").value.trim();
   if(!files.length)return $("#ge").textContent="حداقل یک تصویر انتخاب کنید.";
   const images=await Promise.all(files.map(uploadImage));
-  S.posts.push({id:nid(),by:me.id,at:Date.now(),images,caption:cap,comments:[],likes:[]});save("posts");renderAdminGram(BK2)};
+  S.posts.push({id:nid(),by:me.id,at:Date.now(),images,caption:cap,comments:[],likes:[]});notify("all","QCgram",(cap||"پست جدید")+"",{tab:"qcgram"});save("posts");renderAdminGram(BK2)};
  document.querySelectorAll("[data-pedit]").forEach(b=>b.onclick=()=>{const id=+b.dataset.pedit;window.__editPost=window.__editPost==id?null:id;renderAdminGram(BK2)});
  document.querySelectorAll("[data-esave]").forEach(b=>b.onclick=()=>{const id=+b.dataset.esave;const p=S.posts.find(x=>x.id==id);p.caption=document.querySelector(`[data-ecap="${id}"]`).value.trim();window.__editPost=null;save("posts");renderAdminGram(BK2)});
  document.querySelectorAll("[data-pdel]").forEach(b=>b.onclick=()=>{if(!confirm("حذف این پست؟"))return;S.posts=S.posts.filter(x=>x.id!=+b.dataset.pdel);save("posts");renderAdminGram(BK2)});
@@ -953,7 +990,8 @@ function groupChat(gid){
   if(editingId){const t=$("#gtxt").value.trim();if(!t)return;const m=M(editingId);m.text=t;m.edited=true;editingId=null;$("#greplybox").style.display="none";save("gmsgs");groupChat(gid);return}
   const t=$("#gtxt").value.trim();if(!t&&!image)return;
   S.gmsgs.push({id:nid(),groupId:gid,from:me.id,text:t,image:image||null,at:Date.now(),parent:replyTo});
-  replyTo=null;window.__gWasNearBottom=true;markRead(gid);save("gmsgs");groupChat(gid);
+  {const gg=S.groups.find(x=>x.id==gid)||{members:[],name:"گفتگو"};notify(gg.members,gg.name,me.name+": "+(t||"تصویر"),{tab:"colleague",gid});}
+   replyTo=null;window.__gWasNearBottom=true;markRead(gid);save("gmsgs");groupChat(gid);
  }
  $("#gsend").onclick=()=>doSend();
  $("#gimg").onchange=async()=>{const f=$("#gimg").files[0];if(!f)return;const url=await uploadImage(f);doSend(url)};
@@ -964,7 +1002,8 @@ function openForwardModal(m){
  openModal(`<h3>انتقال پیام به...</h3>${mine.map(g=>`<div data-fwg="${g.id}" style="padding:10px;cursor:pointer;border-bottom:1px solid var(--line)">${esc(g.name)}</div>`).join("")}`);
  document.querySelectorAll("[data-fwg]").forEach(el=>el.onclick=()=>{const gid2=+el.dataset.fwg;
   S.gmsgs.push({id:nid(),groupId:gid2,from:me.id,text:m.text||"",image:m.image||null,at:Date.now(),parent:null});
-  save("gmsgs");closeModal();window.__openGroup=gid2;markRead(gid2);colleague()});
+  {const gg=S.groups.find(x=>x.id==gid2)||{members:[],name:"گفتگو"};notify(gg.members,gg.name,me.name+": "+(m.text||"تصویر"),{tab:"colleague",gid:gid2});}
+   save("gmsgs");closeModal();window.__openGroup=gid2;markRead(gid2);colleague()});
 }
 
 function train(){
@@ -1021,7 +1060,7 @@ function wireCauseForm(n){
   if(!cause||!corr)return;
   const offs=cause=="human"?[...document.querySelectorAll(".ncc_offchk:checked")].map(c=>+c.value):[];
   n.cause=cause;n.offenders=offs;n.corrective=corr;n.stage="creator";n.holder=n.by;
-  n.trail.push({type:"نتیجه‌گیری",from:me.id,to:n.by,note:corr,at:Date.now()});
+  n.trail.push({type:"نتیجه‌گیری",from:me.id,to:n.by,note:corr,at:Date.now()});notify(n.by,"نتیجه‌ی بررسی عدم انطباق",n.subject,{tab:"nc"});
   save("nc");window.__openNc=null;nc();
  };
 }
@@ -1042,31 +1081,31 @@ function ncDetail(id){
   ac.innerHTML=`<div class="card"><h3>ارجاع جهت بررسی</h3>${subs.length?`<select id="ncfwd">${subs.map(u=>`<option value="${u.id}">${esc(u.name)}</option>`).join("")}</select><input id="ncfwdnote" placeholder="یادداشت (اختیاری)"><button class="btn sm" id="ncfwdgo">ارجاع</button>`:'<p class="meta">در چارت سازمانی، کسی زیرمجموعه‌ی شما ثبت نشده است.</p>'}</div>
   ${ncCauseForm()}`;
   const fg=document.getElementById("ncfwdgo");if(fg)fg.onclick=()=>{const to=+document.getElementById("ncfwd").value;const note=document.getElementById("ncfwdnote").value.trim();
-   n.l2=to;n.holder=to;n.stage="l2";n.trail.push({type:"ارجاع جهت بررسی",from:me.id,to,note,at:Date.now()});save("nc");window.__openNc=null;nc()};
+   n.l2=to;n.holder=to;n.stage="l2";n.trail.push({type:"ارجاع جهت بررسی",from:me.id,to,note,at:Date.now()});notify(to,"ارجاع عدم انطباق برای بررسی",n.subject,{tab:"nc"});save("nc");window.__openNc=null;nc()};
   wireCauseForm(n);
  }else if(n.stage=="l2"&&n.l2==me.id){
   ac.innerHTML=`<div class="card"><h3>توضیحات</h3><textarea id="ncl2note" rows="3" placeholder="یافته‌ها و توضیحات"></textarea><button class="btn sm" id="ncl2go">ارسال به سطح اول</button></div>`;
   document.getElementById("ncl2go").onclick=()=>{const note=document.getElementById("ncl2note").value.trim();if(!note)return;
-   n.holder=n.l1;n.stage="l1review";n.trail.push({type:"پاسخ سطح دو",from:me.id,to:n.l1,note,at:Date.now()});save("nc");window.__openNc=null;nc()};
+   n.holder=n.l1;n.stage="l1review";n.trail.push({type:"پاسخ سطح دو",from:me.id,to:n.l1,note,at:Date.now()});notify(n.l1,"پاسخ سطح دو به عدم انطباق",n.subject,{tab:"nc"});save("nc");window.__openNc=null;nc()};
  }else if(n.stage=="l1review"&&n.l1==me.id){
   ac.innerHTML=`<div class="card"><h3>بازگشت جهت بررسی مجدد به سطح دو</h3><textarea id="ncretnote" rows="2" placeholder="توضیح"></textarea><button class="btn sm alt" id="ncretgo">ارسال</button></div>
   ${ncCauseForm()}`;
   document.getElementById("ncretgo").onclick=()=>{const note=document.getElementById("ncretnote").value.trim();if(!note)return;
-   n.holder=n.l2;n.stage="l2";n.trail.push({type:"بازگشت جهت بررسی مجدد",from:me.id,to:n.l2,note,at:Date.now()});save("nc");window.__openNc=null;nc()};
+   n.holder=n.l2;n.stage="l2";n.trail.push({type:"بازگشت جهت بررسی مجدد",from:me.id,to:n.l2,note,at:Date.now()});notify(n.l2,"بازگشت عدم انطباق برای بررسی مجدد",n.subject,{tab:"nc"});save("nc");window.__openNc=null;nc()};
   wireCauseForm(n);
  }else if(n.stage=="creator"&&n.by==me.id){
   ac.innerHTML=`<div class="card"><button class="btn sm" id="ncapprove">تأیید</button> <button class="btn sm alt" id="ncreturn">بازگشت جهت بررسی مجدد</button><div id="ncretwrap" style="display:none;margin-top:8px"><textarea id="ncretreason" rows="2" placeholder="توضیح"></textarea><button class="btn sm" id="ncretsend">ارسال</button></div></div>`;
-  document.getElementById("ncapprove").onclick=()=>{n.stage="closed";n.trail.push({type:"تأیید و بستن",from:me.id,at:Date.now()});save("nc");window.__openNc=null;nc()};
+  document.getElementById("ncapprove").onclick=()=>{n.stage="closed";n.trail.push({type:"تأیید و بستن",from:me.id,at:Date.now()});notify([n.l1,n.l2].filter(Boolean),"عدم انطباق بسته شد",n.subject,{tab:"nc"});save("nc");window.__openNc=null;nc()};
   document.getElementById("ncreturn").onclick=()=>{document.getElementById("ncretwrap").style.display="block"};
   document.getElementById("ncretsend").onclick=()=>{const note=document.getElementById("ncretreason").value.trim();if(!note)return;
-   n.holder=n.l1;n.stage="l1";n.trail.push({type:"بازگشت توسط ثبت‌کننده",from:me.id,to:n.l1,note,at:Date.now()});save("nc");window.__openNc=null;nc()};
+   n.holder=n.l1;n.stage="l1";n.trail.push({type:"بازگشت توسط ثبت‌کننده",from:me.id,to:n.l1,note,at:Date.now()});notify(n.l1,"ثبت‌کننده عدم انطباق را برگرداند",n.subject,{tab:"nc"});save("nc");window.__openNc=null;nc()};
  }
 }
 function openNcModal(others){
  openModal(`<h3>ثبت عدم انطباق جدید</h3><input id="mns" placeholder="موضوع"><textarea id="mnd" rows="2" placeholder="شرح"></textarea><select id="mnto">${others.map(u=>`<option value="${u.id}">${esc(u.name)}</option>`).join("")}</select><div class="err" id="mne"></div><button class="btn sm" id="mnb">ارسال</button>`);
  $("#mnb").onclick=()=>{const su=$("#mns").value.trim(),de=$("#mnd").value.trim(),l1=+$("#mnto").value;
   if(!su||!de)return $("#mne").textContent="موضوع و شرح را وارد کنید.";
-  S.nc.push({id:nid(),subject:su,desc:de,by:me.id,at:Date.now(),l1,l2:null,holder:l1,stage:"l1",cause:"",offenders:[],corrective:"",trail:[{type:"ایجاد و ارجاع",from:me.id,to:l1,note:de,at:Date.now()}]});save("nc");closeModal();nc()};
+  S.nc.push({id:nid(),subject:su,desc:de,by:me.id,at:Date.now(),l1,l2:null,holder:l1,stage:"l1",cause:"",offenders:[],corrective:"",trail:[{type:"ایجاد و ارجاع",from:me.id,to:l1,note:de,at:Date.now()}]});notify(l1,"مورد عدم انطباق جدید",su,{tab:"nc"});save("nc");closeModal();nc()};
 }
 function suggUnread(){
  if(me.role=="manager")return S.suggestions.filter(s=>s.by!=me.id&&s.at>(S.suggReads[me.id]||0)).length;
@@ -1084,12 +1123,12 @@ function suggestions(){
   ${s.reply?`<div class="card"><b>پاسخ:</b> ${esc(s.reply)}<div class="meta">${fd(s.replyAt,1)}</div></div>`:`<textarea data-sr="${s.id}" rows="2" placeholder="پاسخ شما"></textarea><button class="btn sm" data-sb="${s.id}">ارسال پاسخ</button>`}
   </div>`).join(""):'<p class="meta">موردی ثبت نشده است.</p>'}`;
   document.querySelectorAll("[data-sb]").forEach(b=>b.onclick=()=>{const id=+b.dataset.sb;const s=S.suggestions.find(x=>x.id==id);
-   const r=document.querySelector(`[data-sr="${id}"]`).value.trim();if(!r)return;s.reply=r;s.replyAt=Date.now();save("suggestions");suggestions()});
+   const r=document.querySelector(`[data-sr="${id}"]`).value.trim();if(!r)return;s.reply=r;s.replyAt=Date.now();notify(s.by,"پاسخ مدیریت به پیشنهاد شما",r,{tab:"suggestions"});save("suggestions");suggestions()});
  }else{
   const mine=S.suggestions.filter(s=>s.by==me.id).slice().reverse();
   $("#v").innerHTML=`<div class="card"><h3>ارسال انتقاد یا پیشنهاد</h3><textarea id="sgt" rows="3" placeholder="متن خود را بنویسید"></textarea><button class="btn sm" id="sgb">ارسال</button></div>
   ${mine.length?`<h3>موارد ارسالی شما</h3>${mine.map(s=>`<div class="card">${!s.reply?'<span class="tag wa">بدون پاسخ</span>':'<span class="tag ok">پاسخ داده شده</span>'}<p>${esc(s.text)}</p><div class="meta">${fd(s.at,1)}</div>${s.reply?`<div class="card"><b>پاسخ مدیریت:</b> ${esc(s.reply)}</div>`:""}</div>`).join("")}`:""}`;
-  $("#sgb").onclick=()=>{const t=$("#sgt").value.trim();if(!t)return;S.suggestions.push({id:nid(),by:me.id,text:t,at:Date.now(),reply:null,replyAt:null});save("suggestions");suggestions()};
+  $("#sgb").onclick=()=>{const t=$("#sgt").value.trim();if(!t)return;S.suggestions.push({id:nid(),by:me.id,text:t,at:Date.now(),reply:null,replyAt:null});notify(S.users.filter(u=>u.on&&u.role=="manager").map(u=>u.id),"انتقاد یا پیشنهاد جدید",t,{tab:"suggestions"});save("suggestions");suggestions()};
  }
 }
 function complaints(){
@@ -1117,7 +1156,7 @@ function openComplaintModal(){
  openModal(`<h3>ثبت شکایت جدید</h3><input id="mcs" placeholder="موضوع"><textarea id="mct" rows="3" placeholder="متن شکایت"></textarea><input type="file" id="mci" accept="image/*" multiple><div class="err" id="mce"></div><button class="btn sm" id="mcb">ثبت</button>`);
  $("#mcb").onclick=async()=>{const su=$("#mcs").value.trim(),tx=$("#mct").value.trim();if(!su||!tx)return $("#mce").textContent="موضوع و متن را وارد کنید.";
   const files=[...$("#mci").files];const images=files.length?await Promise.all(files.map(uploadImage)):[];
-  S.complaints.push({id:nid(),by:me.id,subject:su,text:tx,images,at:Date.now()});save("complaints");closeModal();complaints()};
+  S.complaints.push({id:nid(),by:me.id,subject:su,text:tx,images,at:Date.now()});notify(usersWith("complaint"),"شکایت جدید",su,{tab:"complaints"});save("complaints");closeModal();complaints()};
 }
 function ncReport(){
  const off={},cau={human:0,method:0};let open=0,closed=0;
