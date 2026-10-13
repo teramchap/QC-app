@@ -192,6 +192,21 @@ body:not(.no-bgimg)::after{content:"";position:fixed;left:0;right:0;bottom:0;hei
 .frow{display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--line)}
 .frow .fi{flex:1;min-width:0;font-size:13px;line-height:1.6}
 .frow code{direction:ltr;unicode-bidi:embed;font-size:12px;color:var(--gray)}
+
+/* roll waste calculator */
+.lcd .lcdrow{position:relative}
+.lcd .lcdrow .lcdbg{left:0;right:0;top:0}
+.lcd .lcdl{position:relative;direction:rtl;text-align:right;color:#ff8a8a;font-size:13px;margin-bottom:6px}
+.fld{margin-bottom:12px}
+.fld>label{display:block;font-size:13px;font-weight:700;margin-bottom:4px}
+.in2{display:flex;gap:8px;align-items:stretch}
+.in2 input{flex:1;min-width:0;margin-bottom:0}
+.in2 select{flex:0 0 92px;width:92px;margin-bottom:0}
+/* like button: only the heart turns red */
+.likebtn{background:none!important;border:0;padding:4px 6px;cursor:pointer;line-height:0;color:var(--ink);box-shadow:none!important;vertical-align:middle}
+.likebtn svg{width:28px;height:28px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linejoin:round;transition:transform .15s,fill .15s}
+.likebtn.on svg{fill:#e0244a;stroke:#e0244a}
+.likebtn:active svg{transform:scale(1.25)}
 </style>
 </head>
 <body>
@@ -451,7 +466,7 @@ function occasion(){
  <div style="display:flex;gap:8px;align-items:center;padding:10px 12px">${avatar(oc.by)}<b>${esc(uname(oc.by))}</b><span class="meta">${fd(oc.at,1)}</span></div>
  ${oc.image?`<div class="igframe"><img src="${oc.image}"></div>`:""}
  <div style="padding:10px 12px">
- <button class="btn sm ${liked?"":"alt"}" id="oclike">${liked?"❤️":"🤍"}</button> <span class="meta">${(oc.likes||[]).length} لایک</span>
+ <button type="button" class="likebtn ${liked?"on":""}" id="oclike" aria-label="لایک">${HEART_SVG}</button> <span class="meta">${(oc.likes||[]).length} لایک</span>
  <p>${esc(oc.caption)}</p>
  ${(oc.comments||[]).map(c=>`<div style="margin-top:8px;display:flex;gap:8px">${avatar(c.by)}<div><b style="font-size:13px">${esc(uname(c.by))}</b><div style="font-size:13px">${esc(c.text)}</div><div class="meta">${fd(c.at,1)}</div></div></div>`).join("")}
  <div class="row" style="margin-top:10px"><input id="occm" placeholder="نظر شما..."><button class="btn sm" id="occb">ارسال</button></div>
@@ -846,7 +861,7 @@ function qcgramPost(id){
  ${p.images.length>1?`<div class="igdots">${p.images.map((_,i)=>`<span class="${i==window.__piIdx?"on":""}"></span>`).join("")}</div>`:""}
  </div>
  <div style="padding:10px 12px">
- <button class="btn sm ${liked?"":"alt"}" id="iglike">${liked?"❤️":"🤍"}</button> <a href="#" id="iglikers" class="meta" style="color:inherit">${(p.likes||[]).length} لایک</a>
+ <button type="button" class="likebtn ${liked?"on":""}" id="iglike" aria-label="لایک">${HEART_SVG}</button> <a href="#" id="iglikers" class="meta" style="color:inherit">${(p.likes||[]).length} لایک</a>
  <p>${esc(p.caption)}</p>
  <div id="igcomments">${renderCommentList(p)}</div>
  <div class="row" style="margin-top:10px"><input id="igcm" placeholder="نظر شما..."><button class="btn sm" id="igcb">ارسال</button></div>
@@ -1231,8 +1246,10 @@ function ncc(){
 }
 function tools(){
  if(window.__toolSub==="units")return units();
+ if(window.__toolSub==="roll")return rollWaste();
  hubPage("ابزارهای جانبی",[
-  {go:"units",title:"تبدیل واحدها",sub:"تبدیل با فرمول‌های تعریف‌شده",icon:'<svg viewBox="0 0 24 24"><path d="M3 8h14l-3-3M21 16H7l3 3"/></svg>'}]);
+  {go:"units",title:"تبدیل واحدها",sub:"تبدیل با فرمول‌های تعریف‌شده",icon:'<svg viewBox="0 0 24 24"><path d="M3 8h14l-3-3M21 16H7l3 3"/></svg>'},
+  {go:"roll",title:"محاسبه ضایعات رول",sub:"وزن خرابی و درصد ضایعات",icon:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3"/><path d="M12 3.5a8.5 8.5 0 018.5 8.5"/></svg>'}]);
  document.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>{window.__toolSub=b.dataset.go;shell()});
 }
 
@@ -1296,6 +1313,55 @@ function fmtResult(r){
  return t;
 }
 
+const HEART_SVG='<svg viewBox="0 0 24 24"><path d="M12 20.5s-8-4.8-8-11A4.6 4.6 0 0112 6.6 4.6 4.6 0 0120 9.5c0 6.200-8 11-8 11z"/></svg>';
+function backBtn(){return '<div style="margin-bottom:10px"><button type="button" class="btn sm alt" id="tback" style="min-width:0;display:inline-flex;align-items:center;gap:6px"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>بازگشت</button></div>'}
+document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("#tback");if(b){e.preventDefault();if(window.appBack)window.appBack()}});
+/* ---- LCD helper ---- */
+function lcdHtml(id,label){return `<div class="lcd" id="${id}"><div class="lcdl">${label}</div><div class="lcdrow"><div class="lcdbg"></div><div class="lcdv">0</div></div><div class="lcdu"></div></div>`}
+function lcdSet(id,txt,unit){
+ const box=document.getElementById(id);if(!box)return;
+ const v=box.querySelector(".lcdv"),bg=box.querySelector(".lcdbg");
+ v.textContent=txt;const digits=txt.replace(/[^0-9\-]/g,"").length;
+ const slots=Math.max(9,digits);bg.textContent="8".repeat(Math.max(0,slots-digits))+txt.replace(/[0-9\-]/g,"8");
+ const size=Math.max(20,Math.min(36,Math.floor(36*9/Math.max(9,digits))));v.style.fontSize=bg.style.fontSize=size+"px";
+ box.querySelector(".lcdu").textContent=unit||"";
+}
+
+/* ---- roll waste calculator ---- */
+function rollWaste(){
+ window.__toolSub="roll";
+ const sel=(id,opts,def)=>`<select id="${id}">${opts.map(o=>`<option value="${o[0]}" ${o[0]===def?"selected":""}>${o[1]}</option>`).join("")}</select>`;
+ const LEN=[["mm","mm"],["cm","cm"],["m","m"]];
+ $("#v").innerHTML=`${backBtn()}<div class="row" style="align-items:center;flex-wrap:nowrap;margin-bottom:4px"><h3 style="flex:1;margin:0;min-width:0">محاسبه ضایعات رول</h3><button class="btn sm alt" id="rreset" style="flex:0 0 auto;min-width:0">پاک کردن</button></div>
+ ${lcdHtml("lcdw","میزان خرابی")}${lcdHtml("lcdp","درصد ضایعات از کل محموله")}
+ <div class="card" style="margin-top:14px"><div>
+ <div class="fld"><label>عمق خرابی</label><div class="in2"><input id="rd" inputmode="decimal" autocomplete="off" placeholder="مثلاً 5">${sel("rdu",LEN,"cm")}</div></div>
+ <div class="fld"><label>تعداد دور</label><div class="in2"><input id="rt" inputmode="decimal" autocomplete="off" placeholder="مثلاً 3"></div></div>
+ <div class="fld"><label>قطر رول</label><div class="in2"><input id="rr" inputmode="decimal" autocomplete="off" placeholder="مثلاً 80">${sel("rru",LEN,"cm")}</div></div>
+ <div class="fld"><label>گرماژ (g/m²)</label><div class="in2"><input id="rg" inputmode="decimal" autocomplete="off" placeholder="مثلاً 70"></div></div>
+ <div class="fld" style="margin-bottom:0"><label>میزان کل محموله</label><div class="in2"><input id="rm" inputmode="decimal" autocomplete="off" placeholder="مثلاً 1500">${sel("rmu",[["kg","kg"],["ton","تن"]],"kg")}</div></div>
+ </div></div>
+ <p class="meta" style="margin-top:12px;line-height:1.9">میزان خرابی = عمق × قطر × π × تعداد دور × گرماژ (با تبدیل خودکار واحدها به متر و گرم، خروجی کیلوگرم).<br>درصد ضایعات = میزان خرابی ÷ کل محموله × ۱۰۰</p>`;
+ const f=id=>document.getElementById(id).value;
+ function calc(){
+  const M={mm:.001,cm:.01,m:1};
+  const d=parseNum(f("rd")),t=parseNum(f("rt")),r=parseNum(f("rr")),g=parseNum(f("rg")),tot=parseNum(f("rm"));
+  const bad=[d,t,r,g,tot].some(v=>v!==null&&v<0);
+  if(bad){lcdSet("lcdw","Err","kg");lcdSet("lcdp","Err","%");return}
+  if(d===null||t===null||r===null||g===null){lcdSet("lcdw","0","kg");lcdSet("lcdp","0","%");return}
+  const kg=(d*M[f("rdu")])*(r*M[f("rru")])*Math.PI*t*g/1000;
+  lcdSet("lcdw",fmtResult(Number(kg.toPrecision(6))),"kg");
+  if(tot===null){lcdSet("lcdp","0","%");return}
+  const totKg=tot*(f("rmu")==="ton"?1000:1);
+  if(totKg===0){lcdSet("lcdp","Err","%");return}
+  lcdSet("lcdp",fmtResult(Number((kg/totKg*100).toPrecision(5))),"%");
+ }
+ ["rd","rt","rr","rg","rm"].forEach(id=>document.getElementById(id).oninput=calc);
+ ["rdu","rru","rmu"].forEach(id=>document.getElementById(id).onchange=calc);
+ document.getElementById("rreset").onclick=()=>rollWaste();
+ calc();
+}
+
 /* ---- unit converter ---- */
 function units(){
  window.__toolSub="units";
@@ -1304,7 +1370,7 @@ function units(){
  const selT=window.__uTitle&&titles.includes(window.__uTitle)?window.__uTitle:"";
  const opts=selT?S.formulas.filter(f=>f.title===selT):[];
  const selF=window.__uId&&opts.find(f=>f.id==window.__uId)?window.__uId:"";
- $("#v").innerHTML=`<div class="card"><div class="row" style="align-items:center;flex-wrap:nowrap"><h3 style="flex:1;margin:0;min-width:0">تبدیل واحدها</h3>${canEdit?'<button class="btn sm" id="fnew" style="flex:0 0 auto;min-width:0">+ ثبت فرمول جدید</button>':""}</div>
+ $("#v").innerHTML=`${backBtn()}<div class="card"><div class="row" style="align-items:center;flex-wrap:nowrap"><h3 style="flex:1;margin:0;min-width:0">تبدیل واحدها</h3>${canEdit?'<button class="btn sm" id="fnew" style="flex:0 0 auto;min-width:0">+ ثبت فرمول جدید</button>':""}</div>
  ${titles.length?`<div style="margin-top:12px"><select id="utitle"><option value="">عنوان را انتخاب کنید…</option>${titles.map(t=>`<option value="${esc(t)}" ${t===selT?"selected":""}>${esc(t)}</option>`).join("")}</select>
  <select id="utype" ${selT?"":"disabled"}><option value="">نوع تبدیل را انتخاب کنید…</option>${opts.map(f=>`<option value="${f.id}" ${f.id==selF?"selected":""}>${esc(f.from)} به ${esc(f.to)}</option>`).join("")}</select>
  <input id="uval" inputmode="decimal" autocomplete="off" placeholder="مقدار را وارد کنید" ${selF?"":"disabled"} style="margin-bottom:0"></div>`:'<p class="meta" style="margin-top:10px">هنوز فرمولی تعریف نشده است.'+(canEdit?" با دکمه‌ی «ثبت فرمول جدید» شروع کنید.":" از مدیر بخواهید فرمول تعریف کند.")+'</p>'}
