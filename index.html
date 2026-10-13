@@ -377,7 +377,7 @@ function pushPlugin(){
 async function registerToken(){try{if(sb&&me&&window.__pushToken)await sb.rpc("register_device",{p_uid:me.id,p_token:window.__pushToken})}catch(e){}}
 function unregisterDevice(){try{if(sb&&window.__pushToken)sb.rpc("unregister_device",{p_token:window.__pushToken}).then(()=>{},()=>{})}catch(e){}}
 function openFromPush(d){try{if(!me||!d||!d.tab)return;window.__openGroup=d.gid?+d.gid:undefined;tab=d.tab;shell()}catch(e){}}
-const QC_BUILD="2026-10-13 04:25 UTC";
+const QC_BUILD="2026-10-13 04:31 UTC";
 function verCard(){
  const c=window.Capacitor;
  if(!c||!c.isNativePlatform||!c.isNativePlatform())return "";
@@ -420,6 +420,7 @@ function pushCard(){
 function ensurePush(){if(window.__pushToken)registerToken();else initPush()}
 function shell(){
  document.body.classList.remove("no-bgimg");
+ if(tab!=="tools")window.__toolSub=undefined;
  if(me&&window.__pushUid!==me.id){window.__pushUid=me.id;ensurePush()}
  $("#app").innerHTML=`<header><label id="pfl" style="cursor:pointer;z-index:1">${avatar(me.id,40)}<input type="file" id="pf" accept="image/*" style="display:none"></label><h1 style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);margin:0">سامانه کنترل کیفیت</h1><span title="${DBSTATE=="ok"?"اتصال به حافظه‌ی مشترک برقرار است":DBSTATE=="error"?"اتصال برقرار نشد؛ فقط ذخیره‌ی محلی":"حالت آفلاین/محلی؛ اطلاعات مشترک نیست"}" style="z-index:1;width:10px;height:10px;border-radius:99px;background:${DBSTATE=="ok"?"#1f7a5a":"#b7791f"}"></span><img src="${LOGO_W}" style="height:40px;width:auto;z-index:1;margin-inline-start:auto"></header>
  <main id="v"></main>
@@ -461,7 +462,7 @@ function home(){
  $("#anncard").onclick=()=>{tab="announce";shell()};
  $("#gramcard").onclick=()=>{tab="qcgram";if(lp){window.__openPost=lp.id;window.__piIdx=0}shell()};
  $("#occcard").onclick=()=>{tab="occasion";shell()};
- document.querySelectorAll(".menugrid button").forEach(b=>b.onclick=()=>{tab=b.dataset.t;shell()});
+ document.querySelectorAll(".menugrid button").forEach(b=>b.onclick=()=>{tab=b.dataset.t;window.__toolSub=undefined;shell()});
 }
 function announce(){
  const la=S.announcement;
@@ -1469,4 +1470,4 @@ function formulaModal(id){
 boot();
 </script>
 </body>
-</html>
+ </html>
