@@ -208,6 +208,14 @@ body:not(.no-bgimg)::after{content:"";position:fixed;left:0;right:0;bottom:0;hei
 .likebtn svg{width:28px;height:28px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linejoin:round;transition:transform .15s,fill .15s}
 .likebtn.on svg{fill:#e0244a;stroke:#e0244a}
 .likebtn:active svg{transform:scale(1.25)}
+
+/* qcgram image manager */
+.pimgs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px}
+.pimg{position:relative;aspect-ratio:1/1;background:var(--bg);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.pimg img{width:100%;height:100%;object-fit:cover;display:block}
+.pimg img.bad{visibility:hidden}
+.pimg:has(img.bad)::before{content:"تصویر ناقص";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--gray)}
+.pdelimg{position:absolute;top:4px;left:4px;width:28px;height:28px;border-radius:50%;border:0;background:rgba(0,0,0,.7);color:#fff;font-size:14px;line-height:28px;padding:0;cursor:pointer;z-index:2}
 </style>
 </head>
 <body>
@@ -245,6 +253,14 @@ const save=(keys)=>{
  if(sb)ks.forEach(async k=>{try{const {error}=await sb.from("app_state").upsert({key:k,value:S[k],updated_at:new Date().toISOString()},{onConflict:"key"});if(error)DBSTATE="error"}catch(e){DBSTATE="error"}});
  toast("ذخیره شد");
 };
+function removeStored(url){
+ try{
+  const key="/storage/v1/object/public/uploads/";
+  if(!sb||!url||String(url).indexOf(key)<0)return;
+  const path=decodeURIComponent(String(url).split(key)[1].split("?")[0]);
+  sb.storage.from("uploads").remove([path]).then(()=>{},()=>{});
+ }catch(e){}
+}
 async function compressImage(file,maxDim,maxBytes){
  maxDim=maxDim||1280;maxBytes=maxBytes||330000;
  try{
@@ -312,6 +328,7 @@ async function boot(){
 }
 const $=s=>document.querySelector(s);
 const esc=t=>String(t??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const escn=t=>esc(t).replace(/\r?\n/g,"<br>");
 const fd=(t,time)=>new Date(t).toLocaleString("fa-IR-u-ca-persian",time?{dateStyle:"medium",timeStyle:"short"}:{dateStyle:"medium"});
 const can=p=>me.role=="manager"||(S.perms[p]||[]).includes(me.role);
 const uname=id=>(S.users.find(u=>u.id==id)||{}).name||"—";
@@ -377,7 +394,7 @@ function pushPlugin(){
 async function registerToken(){try{if(sb&&me&&window.__pushToken)await sb.rpc("register_device",{p_uid:me.id,p_token:window.__pushToken})}catch(e){}}
 function unregisterDevice(){try{if(sb&&window.__pushToken)sb.rpc("unregister_device",{p_token:window.__pushToken}).then(()=>{},()=>{})}catch(e){}}
 function openFromPush(d){try{if(!me||!d||!d.tab)return;window.__openGroup=d.gid?+d.gid:undefined;tab=d.tab;shell()}catch(e){}}
-const QC_BUILD="2026-10-13 04:31 UTC";
+const QC_BUILD="2026-10-14 05:32 UTC";
 function verCard(){
  const c=window.Capacitor;
  if(!c||!c.isNativePlatform||!c.isNativePlatform())return "";
@@ -466,7 +483,7 @@ function home(){
 }
 function announce(){
  const la=S.announcement;
- $("#v").innerHTML=`<div class="card"><h3>اعلانات</h3>${la?`<p>${esc(la.text)}</p><div class="meta">${esc(uname(la.by))} · ${fd(la.at,1)}</div>`:'<p class="meta">اعلانی ثبت نشده است.</p>'}</div>`;
+ $("#v").innerHTML=`<div class="card"><h3>اعلانات</h3>${la?`<p>${escn(la.text)}</p><div class="meta">${esc(uname(la.by))} · ${fd(la.at,1)}</div>`:'<p class="meta">اعلانی ثبت نشده است.</p>'}</div>`;
 }
 function occasion(){
  const oc=S.occasion;
@@ -477,8 +494,8 @@ function occasion(){
  ${oc.image?`<div class="igframe"><img src="${oc.image}"></div>`:""}
  <div style="padding:10px 12px">
  <button type="button" class="likebtn ${liked?"on":""}" id="oclike" aria-label="لایک">${HEART_SVG}</button> <span class="meta">${(oc.likes||[]).length} لایک</span>
- <p>${esc(oc.caption)}</p>
- ${(oc.comments||[]).map(c=>`<div style="margin-top:8px;display:flex;gap:8px">${avatar(c.by)}<div><b style="font-size:13px">${esc(uname(c.by))}</b><div style="font-size:13px">${esc(c.text)}</div><div class="meta">${fd(c.at,1)}</div></div></div>`).join("")}
+ <p>${escn(oc.caption)}</p>
+ ${(oc.comments||[]).map(c=>`<div style="margin-top:8px;display:flex;gap:8px">${avatar(c.by)}<div><b style="font-size:13px">${esc(uname(c.by))}</b><div style="font-size:13px">${escn(c.text)}</div><div class="meta">${fd(c.at,1)}</div></div></div>`).join("")}
  <div class="row" style="margin-top:10px"><input id="occm" placeholder="نظر شما..."><button class="btn sm" id="occb">ارسال</button></div>
  </div></div>`;
  $("#oclike").onclick=()=>{oc.likes=oc.likes||[];const i=oc.likes.indexOf(me.id);if(i>-1)oc.likes.splice(i,1);else oc.likes.push(me.id);save("occasion");occasion()};
@@ -507,7 +524,7 @@ function qc(){
  const groups={};hits.forEach(r=>{(groups[r.c]=groups[r.c]||[]).push(r)});
  $("#v").innerHTML=`<div class="card"><h3>جستجو</h3><div class="row"><input id="qs" placeholder="نام مشتری، نام محصول یا شماره سفارش" value="${sel?esc(sel.val):esc(q)}">${can("qc")?`<button class="btn sm" id="qnew" style="flex:0 0 auto">+ ثبت جدید</button>`:""}</div>
  ${!sel&&term?(sugg.length?`<div class="card" style="padding:4px">${sugg.map(s=>`<div data-sug="${s.type}|${esc(s.val)}" style="padding:8px 6px;cursor:pointer;border-bottom:1px solid var(--line)">${s.type=="c"?"مشتری":s.type=="p"?"محصول":"سفارش"}: ${esc(s.val)}</div>`).join("")}</div>`:'<p class="meta">موردی پیدا نشد.</p>'):""}
- ${sel?(Object.keys(groups).length?Object.entries(groups).map(([cust,items])=>`<div class="card"><b>${esc(cust)}</b>${items.map((r,i)=>`<div style="margin-top:8px;border-top:1px solid var(--line);padding-top:8px">${i+1}. ${r.p?`<span class="tag">${esc(r.p)}</span> `:""}${r.o?`<span class="tag">سفارش ${esc(r.o)}</span> `:""}${esc(r.t)} ${can("qc")?`<a href="#" data-editqc="${S.qc.indexOf(r)}" style="color:var(--accent,#d91c2e)">ویرایش</a>`:""}</div>`).join("")}</div>`).join(""):'<p class="meta">موردی پیدا نشد.</p>'):(!term?'<p class="meta">برای جستجو، نام مشتری، محصول یا شماره سفارش را بنویسید.</p>':"")}
+ ${sel?(Object.keys(groups).length?Object.entries(groups).map(([cust,items])=>`<div class="card"><b>${esc(cust)}</b>${items.map((r,i)=>`<div style="margin-top:8px;border-top:1px solid var(--line);padding-top:8px">${i+1}. ${r.p?`<span class="tag">${esc(r.p)}</span> `:""}${r.o?`<span class="tag">سفارش ${esc(r.o)}</span> `:""}${escn(r.t)} ${can("qc")?`<a href="#" data-editqc="${S.qc.indexOf(r)}" style="color:var(--accent,#d91c2e)">ویرایش</a>`:""}</div>`).join("")}</div>`).join(""):'<p class="meta">موردی پیدا نشد.</p>'):(!term?'<p class="meta">برای جستجو، نام مشتری، محصول یا شماره سفارش را بنویسید.</p>':"")}
  </div>`;
  const qs=$("#qs");
  qs.oninput=()=>{window.__qcSel=null;q=qs.value;qc();const n=$("#qs");n.focus();n.setSelectionRange(n.value.length,n.value.length)};
@@ -560,10 +577,10 @@ function taskDetail(id){
  if(!t){window.__openTask=null;return tasks()}
  const trail=t.trail||[];
  $("#v").innerHTML=`<button class="btn sm alt" id="tdback" style="margin-bottom:10px">→ بازگشت</button>
- <div class="card"><h3>${esc(t.d)}</h3>
+ <div class="card"><h3>${escn(t.d)}</h3>
  ${trail.map((h,i)=>`<div class="card" style="${i==trail.length-1?"border:2px solid var(--navy);background:rgba(126,175,208,.2)":""}">
  <b>${esc(h.type)}</b> <span class="meta">توسط ${esc(uname(h.by))}</span>
- ${h.note?`<p>${esc(h.note)}</p>`:""}
+ ${h.note?`<p>${escn(h.note)}</p>`:""}
  ${h.fileUrl?`<p><a href="${h.fileUrl}" target="_blank">${esc(h.fileName||"فایل")}</a></p>`:""}
  <div class="meta">${fd(h.at,1)}</div>
  </div>`).join("")}
@@ -760,9 +777,11 @@ function renderAdminOcc(BK2){
 function renderAdminGram(BK2){
  $("#v").innerHTML=`${BK2}<div class="card"><h3>پست جدید QCgram</h3><input type="file" id="gi" accept="image/*" multiple><textarea id="gc" rows="2" placeholder="کپشن"></textarea><div class="err" id="ge"></div><button class="btn sm" id="gb">انتشار</button></div>
  <div class="card"><h3>پست‌های منتشرشده</h3>${S.posts.length?S.posts.slice().reverse().map(p=>{const ed=window.__editPost==p.id;return `<div class="card">
- ${p.images[0]?`<img src="${p.images[0]}" style="width:100%;max-height:140px;object-fit:cover;border-radius:8px;margin-bottom:6px">`:""}
- ${ed?`<textarea data-ecap="${p.id}" rows="2">${esc(p.caption)}</textarea><button class="btn sm" data-esave="${p.id}">ذخیره</button>`:`<p>${esc(p.caption)}</p>`}
- <button class="btn sm alt" data-pedit="${p.id}">${ed?"انصراف":"ویرایش کپشن"}</button> <button class="btn sm alt" data-pdel="${p.id}">حذف</button>
+ ${ed?`<div class="pimgs">${p.images.map((u,i)=>`<div class="pimg"><img src="${u}" alt="" onerror="this.classList.add('bad')"><button type="button" class="pdelimg" data-delimg="${p.id}:${i}" aria-label="حذف عکس">✕</button></div>`).join("")}</div>
+  <div class="row" style="flex-wrap:nowrap;align-items:center;margin-bottom:6px"><input type="file" accept="image/*" multiple data-addfile="${p.id}" style="margin-bottom:0;min-width:0"><button class="btn sm" data-addimg="${p.id}" style="flex:0 0 auto;min-width:0">افزودن</button></div><div class="err" data-aerr="${p.id}"></div>`
+  :`${p.images[0]?`<img src="${p.images[0]}" alt="" onerror="this.style.display='none'" style="width:100%;max-height:140px;object-fit:cover;border-radius:8px;margin-bottom:6px">`:""}${p.images.length>1?`<div class="meta" style="margin-bottom:4px">${p.images.length} عکس</div>`:""}`}
+ ${ed?`<textarea data-ecap="${p.id}" rows="2">${esc(p.caption)}</textarea><button class="btn sm" data-esave="${p.id}">ذخیره</button>`:`<p>${escn(p.caption)}</p>`}
+ <button class="btn sm alt" data-pedit="${p.id}">${ed?"انصراف":"ویرایش"}</button> <button class="btn sm alt" data-pdel="${p.id}">حذف</button>
  </div>`}).join(""):'<p class="meta">هنوز پستی نیست.</p>'}</div>`;
  $("#abk2").onclick=()=>{window.__adminHomeSub=null;admin()};
  $("#gb").onclick=async()=>{const files=[...$("#gi").files].slice(0,10);const cap=$("#gc").value.trim();
@@ -771,7 +790,23 @@ function renderAdminGram(BK2){
   S.posts.push({id:nid(),by:me.id,at:Date.now(),images,caption:cap,comments:[],likes:[]});notify("all","QCgram",(cap||"پست جدید")+"",{tab:"qcgram"});save("posts");renderAdminGram(BK2)};
  document.querySelectorAll("[data-pedit]").forEach(b=>b.onclick=()=>{const id=+b.dataset.pedit;window.__editPost=window.__editPost==id?null:id;renderAdminGram(BK2)});
  document.querySelectorAll("[data-esave]").forEach(b=>b.onclick=()=>{const id=+b.dataset.esave;const p=S.posts.find(x=>x.id==id);p.caption=document.querySelector(`[data-ecap="${id}"]`).value.trim();window.__editPost=null;save("posts");renderAdminGram(BK2)});
- document.querySelectorAll("[data-pdel]").forEach(b=>b.onclick=()=>{if(!confirm("حذف این پست؟"))return;S.posts=S.posts.filter(x=>x.id!=+b.dataset.pdel);save("posts");renderAdminGram(BK2)});
+ document.querySelectorAll("[data-pdel]").forEach(b=>b.onclick=()=>{if(!confirm("حذف این پست؟"))return;const gone=S.posts.find(x=>x.id==+b.dataset.pdel);S.posts=S.posts.filter(x=>x.id!=+b.dataset.pdel);if(gone)(gone.images||[]).forEach(removeStored);save("posts");renderAdminGram(BK2)});
+ document.querySelectorAll("[data-delimg]").forEach(b=>b.onclick=()=>{
+  const [pid,idx]=b.dataset.delimg.split(":").map(Number);const p=S.posts.find(x=>x.id==pid);if(!p)return;
+  if(p.images.length<=1){alert("پست باید حداقل یک عکس داشته باشد. برای حذف کامل پست از دکمه‌ی «حذف» استفاده کنید.");return}
+  if(!confirm("این عکس حذف شود؟"))return;
+  const gone=p.images.splice(idx,1)[0];removeStored(gone);save("posts");renderAdminGram(BK2);
+ });
+ document.querySelectorAll("[data-addimg]").forEach(b=>b.onclick=async()=>{
+  const pid=+b.dataset.addimg,p=S.posts.find(x=>x.id==pid);if(!p)return;
+  const inp=document.querySelector(`[data-addfile="${pid}"]`),err=document.querySelector(`[data-aerr="${pid}"]`),files=[...inp.files];
+  if(!files.length){err.textContent="عکسی انتخاب نشده است.";return}
+  if(p.images.length+files.length>10){err.textContent="هر پست حداکثر ۱۰ عکس دارد.";return}
+  b.disabled=true;b.textContent="در حال آپلود…";
+  try{const ups=await Promise.all(files.map(f=>uploadImage(f,{compress:true})));p.images.push(...ups.filter(Boolean))}
+  catch(e){err.textContent="آپلود ناموفق بود.";b.disabled=false;b.textContent="افزودن";return}
+  save("posts");renderAdminGram(BK2);
+ });
 }
 window.__chartCollapsed=window.__chartCollapsed||{};
 function toggleChart(btn){const li=btn.closest("li");const id=li.dataset.uid;window.__chartCollapsed[id]=!window.__chartCollapsed[id];li.classList.toggle("collapsed",!!window.__chartCollapsed[id])}
@@ -840,7 +875,7 @@ function renderOneComment(c,isReply){
  html+=avatar(c.by,isReply?20:26);
  html+='<b style="font-size:'+nameSize+'px">'+esc(uname(c.by))+'</b>';
  html+='</div>';
- html+='<div style="font-size:'+nameSize+'px;margin-top:2px">'+esc(c.text)+'</div>';
+ html+='<div style="font-size:'+nameSize+'px;margin-top:2px">'+escn(c.text)+'</div>';
  html+='<div class="meta">'+fd(c.at,1);
  html+=' · <a href="#" data-clike="'+c.id+'" style="text-decoration:none">'+(liked?"❤️":"🤍")+'</a>';
  if(!isReply)html+=' · <a href="#" data-reply="'+c.id+'" style="color:var(--accent,#d91c2e)">پاسخ</a>';
@@ -872,7 +907,7 @@ function qcgramPost(id){
  </div>
  <div style="padding:10px 12px">
  <button type="button" class="likebtn ${liked?"on":""}" id="iglike" aria-label="لایک">${HEART_SVG}</button> <a href="#" id="iglikers" class="meta" style="color:inherit">${(p.likes||[]).length} لایک</a>
- <p>${esc(p.caption)}</p>
+ <p>${escn(p.caption)}</p>
  <div id="igcomments">${renderCommentList(p)}</div>
  <div class="row" style="margin-top:10px"><input id="igcm" placeholder="نظر شما..."><button class="btn sm" id="igcb">ارسال</button></div>
  </div></div>`;
@@ -983,7 +1018,7 @@ function groupChat(gid){
  ${!mine?`<div class="bname">${esc(uname(m.from))}</div>`:""}
  ${rp?`<div class="meta" data-jumpto="${rp.id}" style="opacity:.8;border-inline-start:2px solid currentColor;padding-inline-start:6px;margin-bottom:3px;cursor:pointer">${esc(uname(rp.from))}: ${esc((rp.text||"تصویر").slice(0,40))}</div>`:""}
  ${m.image?`<img src="${m.image}" style="width:200px;height:200px;object-fit:cover;border-radius:8px;margin-bottom:3px;display:block">`:""}
- ${m.text?`<div class="btext">${esc(m.text)}${m.edited?' <span style="opacity:.6;font-size:10px">(ویرایش‌شده)</span>':""}</div>`:""}
+ ${m.text?`<div class="btext">${escn(m.text)}${m.edited?' <span style="opacity:.6;font-size:10px">(ویرایش‌شده)</span>':""}</div>`:""}
  <div class="btime">${fd(m.at,1).split(" ").slice(-1)[0]}</div>
  </div>`;
  return `${chip}<div class="msgrow ${mine?"me":"other"}" data-msgid="${m.id}">
@@ -1089,13 +1124,31 @@ function train(){
  if(can("train"))$("#trnew").onclick=()=>openTrainModal();
  document.querySelectorAll("[data-op]").forEach(b=>b.onclick=()=>{const t=S.trainings.find(x=>x.id==b.dataset.op);if(!t)return;
   const media=t.image?(t.kind=="pdf"?`<p><a href="${t.image}" target="_blank" class="tag">📄 مشاهده فایل پی‌دی‌اف</a></p>`:`<img src="${t.image}" style="width:100%;border-radius:8px;margin-bottom:8px">`):"";
-  openModal(`<h3>${esc(t.title)}</h3>${media}<p>${esc(t.text)}</p><div class="meta">${esc(uname(t.by))} · ${fd(t.at,1)}</div>`)});
+  openModal(`<h3>${esc(t.title)}</h3>${media}<p>${escn(t.text)}</p><div class="meta">${esc(uname(t.by))} · ${fd(t.at,1)}</div>${can("train")?'<div class="row" style="margin-top:12px;flex-wrap:nowrap"><button class="btn sm alt" id="tr_edit" style="min-width:0">ویرایش</button><button class="btn sm alt" id="tr_del" style="min-width:0">حذف</button></div>':""}`);
+  if(can("train")){
+   $("#tr_edit").onclick=()=>openTrainModal(t.id);
+   $("#tr_del").onclick=()=>{if(!confirm("این مطلب آموزشی حذف شود؟"))return;S.trainings=S.trainings.filter(x=>x.id!=t.id);removeStored(t.image);save("trainings");closeModal();train()};
+  }});
 }
-function openTrainModal(){
- openModal(`<h3>مطلب آموزشی جدید</h3><input id="mtrt" placeholder="عنوان"><textarea id="mtrx" rows="3" placeholder="متن آموزشی"></textarea><input type="file" id="mtri" accept="image/*,application/pdf,.pdf"><div class="err" id="mtre"></div><button class="btn sm" id="mtrb">ثبت</button>`);
- $("#mtrb").onclick=async()=>{const ti=$("#mtrt").value.trim(),tx=$("#mtrx").value.trim();if(!ti||!tx)return $("#mtre").textContent="عنوان و متن را وارد کنید.";
-  const f=$("#mtri").files[0];const image=f?await uploadImage(f):null;const kind=f&&(f.type=="application/pdf"||f.name.toLowerCase().endsWith(".pdf"))?"pdf":"image";
-  S.trainings.push({id:nid(),title:ti,text:tx,image,kind,by:me.id,at:Date.now()});save("trainings");closeModal();train()};
+function openTrainModal(id){
+ const t=id?S.trainings.find(x=>x.id==id):null;
+ openModal(`<h3>${t?"ویرایش مطلب آموزشی":"مطلب آموزشی جدید"}</h3><input id="mtrt" placeholder="عنوان" value="${t?esc(t.title):""}"><textarea id="mtrx" rows="5" placeholder="متن آموزشی">${t?esc(t.text):""}</textarea>
+ ${t&&t.image?`<p class="meta" style="margin:0 0 6px">${t.kind=="pdf"?"این مطلب فایل پی‌دی‌اف دارد.":"این مطلب تصویر دارد."} برای تغییر، فایل تازه انتخاب کنید.</p><label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:13px"><input type="checkbox" id="mtrdel" style="width:auto;margin:0"> حذف فایل فعلی</label>`:""}
+ <input type="file" id="mtri" accept="image/*,application/pdf,.pdf"><div class="err" id="mtre"></div><button class="btn sm" id="mtrb">${t?"ذخیره‌ی تغییرات":"ثبت"}</button>`);
+ $("#mtrb").onclick=async()=>{
+  const ti=$("#mtrt").value.trim(),tx=$("#mtrx").value.trim();
+  if(!ti||!tx)return $("#mtre").textContent="عنوان و متن را وارد کنید.";
+  const f=$("#mtri").files[0];
+  let image=t?t.image:null,kind=t?t.kind:"image";
+  if(f){
+   const up=await uploadImage(f);
+   if(t&&t.image&&t.image!==up)removeStored(t.image);
+   image=up;kind=(f.type=="application/pdf"||f.name.toLowerCase().endsWith(".pdf"))?"pdf":"image";
+  }else if(t&&$("#mtrdel")&&$("#mtrdel").checked){removeStored(t.image);image=null;kind="image"}
+  if(t){t.title=ti;t.text=tx;t.image=image;t.kind=kind}
+  else S.trainings.push({id:nid(),title:ti,text:tx,image,kind,by:me.id,at:Date.now()});
+  save("trainings");closeModal();train();
+ };
 }
 
 const NCSTAGE={l1:"نزد بررسی‌کننده",l2:"نزد سطح دو",l1review:"بازبینی سطح یک",creator:"نزد ثبت‌کننده",closed:"بسته"};
@@ -1147,9 +1200,9 @@ function ncDetail(id){
  S.ncSeen[n.id+":"+me.id]=Date.now();save("ncSeen");
  const CAUSE={human:"نیروی انسانی",method:"روش کار"};
  $("#v").innerHTML=`<button class="btn sm alt" id="ncback" style="margin-bottom:10px">→ بازگشت</button>
- <div class="card"><h3>${esc(n.subject)}</h3><p>${esc(n.desc)}</p><span class="tag ${n.stage=="closed"?"ok":"wa"}">${NCSTAGE[n.stage]||n.stage}</span></div>
- <div class="card"><h3>گردش</h3>${n.trail.map(h=>`<div style="padding:6px 0;border-bottom:1px solid var(--line)"><b>${esc(h.type)}</b><div class="meta">از: ${esc(uname(h.from))}${h.to?" · به: "+esc(uname(h.to)):""} · ${fd(h.at,1)}</div>${h.note?`<p>${esc(h.note)}</p>`:""}</div>`).join("")}</div>
- ${n.cause?`<div class="card"><p>عامل: ${CAUSE[n.cause]||""} ${n.offenders&&n.offenders.length?"· افراد: "+n.offenders.map(uname).join("، "):""}</p>${n.corrective?`<p>اقدام اصلاحی: ${esc(n.corrective)}</p>`:""}</div>`:""}
+ <div class="card"><h3>${esc(n.subject)}</h3><p>${escn(n.desc)}</p><span class="tag ${n.stage=="closed"?"ok":"wa"}">${NCSTAGE[n.stage]||n.stage}</span></div>
+ <div class="card"><h3>گردش</h3>${n.trail.map(h=>`<div style="padding:6px 0;border-bottom:1px solid var(--line)"><b>${esc(h.type)}</b><div class="meta">از: ${esc(uname(h.from))}${h.to?" · به: "+esc(uname(h.to)):""} · ${fd(h.at,1)}</div>${h.note?`<p>${escn(h.note)}</p>`:""}</div>`).join("")}</div>
+ ${n.cause?`<div class="card"><p>عامل: ${CAUSE[n.cause]||""} ${n.offenders&&n.offenders.length?"· افراد: "+n.offenders.map(uname).join("، "):""}</p>${n.corrective?`<p>اقدام اصلاحی: ${escn(n.corrective)}</p>`:""}</div>`:""}
  <div id="ncactions"></div>`;
  $("#ncback").onclick=()=>{window.__openNc=null;nc()};
  const ac=document.getElementById("ncactions");
@@ -1196,15 +1249,15 @@ function suggestions(){
   const list=S.suggestions.slice().reverse();
   $("#v").innerHTML=`<h3>صندوق انتقادات و پیشنهادات</h3>
   ${list.length?list.map(s=>`<div class="card">${!s.reply?'<span class="tag wa">بدون پاسخ</span>':'<span class="tag ok">پاسخ داده شده</span>'}
-  <p>${esc(s.text)}</p><div class="meta">${esc(uname(s.by))} · ${fd(s.at,1)}</div>
-  ${s.reply?`<div class="card"><b>پاسخ:</b> ${esc(s.reply)}<div class="meta">${fd(s.replyAt,1)}</div></div>`:`<textarea data-sr="${s.id}" rows="2" placeholder="پاسخ شما"></textarea><button class="btn sm" data-sb="${s.id}">ارسال پاسخ</button>`}
+  <p>${escn(s.text)}</p><div class="meta">${esc(uname(s.by))} · ${fd(s.at,1)}</div>
+  ${s.reply?`<div class="card"><b>پاسخ:</b> ${escn(s.reply)}<div class="meta">${fd(s.replyAt,1)}</div></div>`:`<textarea data-sr="${s.id}" rows="2" placeholder="پاسخ شما"></textarea><button class="btn sm" data-sb="${s.id}">ارسال پاسخ</button>`}
   </div>`).join(""):'<p class="meta">موردی ثبت نشده است.</p>'}`;
   document.querySelectorAll("[data-sb]").forEach(b=>b.onclick=()=>{const id=+b.dataset.sb;const s=S.suggestions.find(x=>x.id==id);
    const r=document.querySelector(`[data-sr="${id}"]`).value.trim();if(!r)return;s.reply=r;s.replyAt=Date.now();notify(s.by,"پاسخ مدیریت به پیشنهاد شما",r,{tab:"suggestions"});save("suggestions");suggestions()});
  }else{
   const mine=S.suggestions.filter(s=>s.by==me.id).slice().reverse();
   $("#v").innerHTML=`<div class="card"><h3>ارسال انتقاد یا پیشنهاد</h3><textarea id="sgt" rows="3" placeholder="متن خود را بنویسید"></textarea><button class="btn sm" id="sgb">ارسال</button></div>
-  ${mine.length?`<h3>موارد ارسالی شما</h3>${mine.map(s=>`<div class="card">${!s.reply?'<span class="tag wa">بدون پاسخ</span>':'<span class="tag ok">پاسخ داده شده</span>'}<p>${esc(s.text)}</p><div class="meta">${fd(s.at,1)}</div>${s.reply?`<div class="card"><b>پاسخ مدیریت:</b> ${esc(s.reply)}</div>`:""}</div>`).join("")}`:""}`;
+  ${mine.length?`<h3>موارد ارسالی شما</h3>${mine.map(s=>`<div class="card">${!s.reply?'<span class="tag wa">بدون پاسخ</span>':'<span class="tag ok">پاسخ داده شده</span>'}<p>${escn(s.text)}</p><div class="meta">${fd(s.at,1)}</div>${s.reply?`<div class="card"><b>پاسخ مدیریت:</b> ${escn(s.reply)}</div>`:""}</div>`).join("")}`:""}`;
   $("#sgb").onclick=()=>{const t=$("#sgt").value.trim();if(!t)return;S.suggestions.push({id:nid(),by:me.id,text:t,at:Date.now(),reply:null,replyAt:null});notify(S.users.filter(u=>u.on&&u.role=="manager").map(u=>u.id),"انتقاد یا پیشنهاد جدید",t,{tab:"suggestions"});save("suggestions");suggestions()};
  }
 }
@@ -1215,7 +1268,7 @@ function complaints(){
   if(c){
    if(!S.complaintSeen[c.id+":"+me.id]){S.complaintSeen[c.id+":"+me.id]=true;save("complaintSeen")}
    $("#v").innerHTML=`<button class="btn sm alt" id="cxback" style="margin-bottom:12px">→ بازگشت</button>
-   <div class="card"><h3>${esc(c.subject)}</h3><p>${esc(c.text)}</p>
+   <div class="card"><h3>${esc(c.subject)}</h3><p>${escn(c.text)}</p>
    ${c.images&&c.images.length?`<div style="display:flex;gap:6px;overflow-x:auto">${c.images.map(im=>`<img src="${im}" style="width:70%;flex:0 0 auto;max-height:220px;object-fit:cover;border-radius:8px">`).join("")}</div>`:""}
    <div class="meta">${esc(uname(c.by))} · ${fd(c.at,1)}</div></div>`;
    $("#cxback").onclick=()=>{window.__openComplaint=null;complaints()};
@@ -1470,4 +1523,4 @@ function formulaModal(id){
 boot();
 </script>
 </body>
- </html>
+</html>
