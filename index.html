@@ -245,6 +245,11 @@ body.kb #gsug{bottom:70px!important}
 .bubble,.btext,.msgrow{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .msgrow img{-webkit-touch-callout:none}
 mark{background:#ffe066;color:#222;border-radius:3px;padding:0 1px}
+
+/* chat: jump to latest message */
+.gdown{position:fixed;left:14px;bottom:calc(54px + 76px + env(safe-area-inset-bottom,0px));width:42px;height:42px;border-radius:50%;border:1px solid var(--line);background:var(--card);color:var(--ink);box-shadow:0 4px 12px rgba(0,0,0,.3);z-index:6;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+.gdown svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+body.kb .gdown{bottom:80px}
 </style>
 </head>
 <body>
@@ -423,7 +428,7 @@ function pushPlugin(){
 async function registerToken(){try{if(sb&&me&&window.__pushToken)await sb.rpc("register_device",{p_uid:me.id,p_token:window.__pushToken})}catch(e){}}
 function unregisterDevice(){try{if(sb&&window.__pushToken)sb.rpc("unregister_device",{p_token:window.__pushToken}).then(()=>{},()=>{})}catch(e){}}
 function openFromPush(d){try{if(!me||!d||!d.tab)return;window.__openGroup=d.gid?+d.gid:undefined;tab=d.tab;shell()}catch(e){}}
-const QC_BUILD="2026-10-15 03:57 UTC";
+const QC_BUILD="2026-10-15 09:06 UTC";
 function verCard(){
  const c=window.Capacitor;
  if(!c||!c.isNativePlatform||!c.isNativePlatform())return "";
@@ -480,7 +485,7 @@ function shell(){
  </div>`;
  $("#bblo").onclick=()=>{if(!confirm("مطمئن هستید می‌خواهید خارج شوید؟"))return;unregisterDevice();me=null;window.__pushUid=null;try{localStorage.removeItem("qcuid")}catch(e){}login()};
  $("#pf").onchange=async()=>{const f=$("#pf").files[0];if(!f)return;const url=await uploadImage(f);me.photo=url;save("users");shell()};
- document.querySelectorAll(".bottombar [data-bt]").forEach(b=>b.onclick=()=>{tab=b.dataset.bt;if(tab=="qcgram"){window.__openPost=null;window.__piIdx=0}shell()});
+ document.querySelectorAll(".bottombar [data-bt]").forEach(b=>b.onclick=()=>{resetNav();tab=b.dataset.bt;window.__piIdx=0;shell()});
  ({home,qc,tasks,shift,qcgram,colleague,train,nc,admin,profile,announce,occasion,suggestions,complaints,ncc,tools})[tab]();
 }
 
@@ -509,7 +514,7 @@ function home(){
  $("#anncard").onclick=()=>{tab="announce";shell()};
  $("#gramcard").onclick=()=>{tab="qcgram";if(lp){window.__openPost=lp.id;window.__piIdx=0}shell()};
  $("#occcard").onclick=()=>{tab="occasion";shell()};
- document.querySelectorAll(".menugrid button").forEach(b=>b.onclick=()=>{tab=b.dataset.t;window.__toolSub=undefined;shell()});
+ document.querySelectorAll(".menugrid button").forEach(b=>b.onclick=()=>{resetNav();tab=b.dataset.t;shell()});
 }
 function announce(){
  const la=S.announcement;
@@ -1068,6 +1073,7 @@ function groupChat(gid){
   $("#v").innerHTML=`<div class="chathdr" id="chathdr"><button type="button" class="chb" id="gback" aria-label="بازگشت">${ARW}</button><div class="cht" id="gtitle">${esc(g.name)}<small>${g.members.length} عضو</small></div><button type="button" class="chb" id="gdots" aria-label="منو">${DOTS}</button></div>
   <div class="chathdr chsearch" id="gsearch" style="display:none"><button type="button" class="chb" id="gqx" aria-label="بستن جستجو">${ARW}</button><input id="gq" placeholder="جستجو در گفتگو…" autocomplete="off"><span class="meta" id="gqc"></span></div>
   <div class="gdmenu" id="gdmenu"><div id="gdsearch">${MAG} جستجو</div></div>
+  <button type="button" class="gdown" id="gdown" aria-label="رفتن به آخرین پیام" style="display:none"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
   <div style="max-height:calc(100vh - 230px);overflow-y:auto;padding:4px" id="gmsgbox">${msgs.length?rows:'<p class="meta">هنوز پیامی نیست.</p>'}</div>
   <div class="meta" id="greplybox" style="display:none;margin:6px 0"></div>
  <div class="chatbar">
@@ -1081,7 +1087,10 @@ function groupChat(gid){
  const box=$("#gmsgbox");
  if(window.__gWasNearBottom!==false)box.scrollTop=box.scrollHeight;
  box.style.paddingBottom="8px";
- box.onscroll=()=>{window.__gWasNearBottom=(box.scrollTop+box.clientHeight>=box.scrollHeight-60)};
+ const dn=$("#gdown");const updDown=()=>{dn.style.display=(box.scrollHeight-box.scrollTop-box.clientHeight>180)?"flex":"none"};
+ box.onscroll=()=>{window.__gWasNearBottom=(box.scrollTop+box.clientHeight>=box.scrollHeight-60);updDown()};
+ dn.onclick=()=>box.scrollTo({top:box.scrollHeight,behavior:"smooth"});
+ setTimeout(updDown,0);
  $("#v").style.paddingBottom="140px";
  $("#gback").onclick=()=>{window.__openGroup=null;window.__gWasNearBottom=undefined;colleague()};
  $("#gtitle").onclick=()=>groupInfo(gid);
@@ -1151,7 +1160,7 @@ function groupChat(gid){
     });
    });
   }
-  function renderBox(list,q){box.innerHTML=list.length?buildRows(list,q):'<p class="meta">'+(q?"نتیجه‌ای پیدا نشد.":"هنوز پیامی نیست.")+'</p>';bindRows()}
+  function renderBox(list,q){box.innerHTML=list.length?buildRows(list,q):'<p class="meta">'+(q?"نتیجه‌ای پیدا نشد.":"هنوز پیامی نیست.")+'</p>';bindRows();setTimeout(updDown,0)}
   bindRows();
   const hdr=$("#chathdr"),sbar=$("#gsearch"),dm=$("#gdmenu");
   $("#gdots").onclick=(e)=>{
@@ -1164,6 +1173,7 @@ function groupChat(gid){
   function closeSearch(){sbar.style.display="none";hdr.style.display="flex";const cb=document.querySelector(".chatbar");if(cb)cb.style.display="";renderBox(msgs,"");box.scrollTop=box.scrollHeight}
   $("#gdsearch").onclick=(e)=>{e.stopPropagation();dm.style.display="none";openSearch()};
   $("#gqx").onclick=closeSearch;
+  window.__gcloseSearch=closeSearch;
   $("#gq").oninput=()=>{
    const q=$("#gq").value.trim();
    if(!q){renderBox(msgs,"");$("#gqc").textContent="";return}
@@ -1394,7 +1404,7 @@ function ncc(){
  hubPage("عدم انطباق‌ها و شکایات",[
   {go:"nc",title:"عدم انطباق‌ها",sub:"ثبت و پیگیری موارد عدم انطباق",icon:'<svg viewBox="0 0 24 24"><path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17v.5"/></svg>',badge:ncNewCount()},
   {go:"complaints",title:"شکایات",sub:"ثبت و مشاهده شکایات",icon:'<svg viewBox="0 0 24 24"><path d="M6 3v18M6 4h12l-2 3.5 2 3.5H6"/></svg>',badge:complaintsUnseen()}]);
- document.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>{tab=b.dataset.go;shell()});
+ document.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>{resetNav();tab=b.dataset.go;shell()});
 }
 function tools(){
  if(window.__toolSub==="units")return units();
@@ -1584,30 +1594,34 @@ function formulaModal(id){
  window.addEventListener("resize",()=>{if(!isText(document.activeElement))document.body.classList.remove("kb")});
 })();
 
-/* ---- Android back button: go back one page instead of closing the app ---- */
+/* ---- back button: always one level UP in the app structure ---- */
 (function(){
  const FLAGS=["__toolSub","__openNc","__openPost","__adminSub","__adminHomeSub","__openTask","__openGroup","__openComplaint","__editUser","__editPost","__qcSel"];
- let stack=[],timer=null;
- const snap=()=>JSON.stringify({t:tab,f:FLAGS.map(k=>window[k]||null)});
- const isRoot=o=>o.t==="home"&&o.f.every(v=>!v);
- function record(){
-  if(!document.getElementById("v")){stack=[];return}
-  if(document.getElementById("modalbg"))return;
-  const s=snap();
-  if(isRoot(JSON.parse(s))){stack=[s];return}
-  if(stack[stack.length-1]===s)return;
-  if(!stack.length)stack.push(JSON.stringify({t:"home",f:FLAGS.map(()=>null)}));
-  stack.push(s);if(stack.length>40)stack.shift();
- }
- function restore(s){const o=JSON.parse(s);tab=o.t;FLAGS.forEach((k,i)=>{window[k]=o.f[i]||undefined});shell()}
+ function clearAll(){FLAGS.forEach(k=>{window[k]=undefined})}
+ window.resetNav=clearAll;
  window.appBack=function(){
   if(document.getElementById("modalbg")){closeModal();return true}
   if(!document.getElementById("v"))return false;
-  if(isRoot(JSON.parse(snap())))return false;
-  if(stack.length>1){stack.pop();restore(stack[stack.length-1]);return true}
-  stack=[];tab="home";FLAGS.forEach(k=>{window[k]=undefined});shell();return true;
+  const rb=document.getElementById("reactbar");if(rb){rb.remove();return true}
+  const gs=document.getElementById("gsearch");
+  if(gs&&gs.style.display!=="none"&&window.__gcloseSearch){window.__gcloseSearch();return true}
+  const W=window,go=t=>{tab=t;shell();return true};
+  switch(tab){
+   case "home":return false;
+   case "nc":if(W.__openNc){W.__openNc=undefined;return go("nc")}clearAll();return go("ncc");
+   case "complaints":if(W.__openComplaint){W.__openComplaint=undefined;return go("complaints")}clearAll();return go("ncc");
+   case "tools":if(W.__toolSub){W.__toolSub=undefined;return go("tools")}clearAll();return go("home");
+   case "tasks":if(W.__openTask){W.__openTask=undefined;return go("tasks")}clearAll();return go("home");
+   case "qcgram":if(W.__openPost){W.__openPost=undefined;W.__piIdx=0;return go("qcgram")}clearAll();return go("home");
+   case "colleague":if(W.__openGroup){W.__openGroup=undefined;W.__gWasNearBottom=undefined;return go("colleague")}clearAll();return go("home");
+   case "qc":if(W.__qcSel){W.__qcSel=undefined;return go("qc")}clearAll();return go("home");
+   case "admin":
+    if(W.__adminSub==="home"&&W.__adminHomeSub){W.__adminHomeSub=undefined;W.__editPost=undefined;return go("admin")}
+    if(W.__adminSub){W.__adminSub=undefined;W.__adminHomeSub=undefined;W.__editUser=undefined;W.__editPost=undefined;return go("admin")}
+    clearAll();return go("home");
+   default:clearAll();return go("home");
+  }
  };
- new MutationObserver(()=>{clearTimeout(timer);timer=setTimeout(record,30)}).observe(document.getElementById("app"),{childList:true,subtree:true});
  const cap=window.Capacitor;
  if(cap&&cap.isNativePlatform&&cap.isNativePlatform()){
   const AppP=(cap.Plugins&&cap.Plugins.App)||cap.registerPlugin("App");
