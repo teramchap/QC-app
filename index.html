@@ -216,6 +216,35 @@ body:not(.no-bgimg)::after{content:"";position:fixed;left:0;right:0;bottom:0;hei
 .pimg img.bad{visibility:hidden}
 .pimg:has(img.bad)::before{content:"تصویر ناقص";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--gray)}
 .pdelimg{position:absolute;top:4px;left:4px;width:28px;height:28px;border-radius:50%;border:0;background:rgba(0,0,0,.7);color:#fff;font-size:14px;line-height:28px;padding:0;cursor:pointer;z-index:2}
+
+/* chat page */
+body.nohdr header{display:none}
+body.kb .bottombar,body.kb::after{display:none!important}
+body.kb .chatbar{bottom:env(safe-area-inset-bottom,0px)!important}
+body.kb #gsug{bottom:70px!important}
+.chathdr{position:sticky;top:env(safe-area-inset-top,0px);z-index:8;display:flex;align-items:center;gap:6px;margin:-16px -16px 10px;padding:8px 6px;min-height:56px;background:linear-gradient(135deg,#ee2b3f,#c0152a);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+:root[data-theme="dark"] .chathdr{background:linear-gradient(180deg,#14141a,#000);border-bottom:2px solid var(--accent);box-shadow:none}
+.chathdr .cht{flex:1;min-width:0;text-align:center;font-weight:700;font-size:17px;line-height:1.35;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chathdr .cht small{display:block;font-weight:400;font-size:11px;opacity:.85}
+.chb{background:none;border:0;color:inherit;width:40px;height:40px;display:flex;align-items:center;justify-content:center;border-radius:50%;cursor:pointer;flex:0 0 auto;padding:0}
+.chb:active{background:rgba(255,255,255,.18)}
+.chb svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.chb svg.fill{fill:currentColor;stroke:none}
+.chsearch input{flex:1;min-width:0;margin:0;background:rgba(255,255,255,.96);color:#222;border:0;border-radius:99px;padding:8px 14px}
+.chsearch .meta{color:#fff;opacity:.9;white-space:nowrap;padding:0 6px}
+.gdmenu{position:fixed;display:none;z-index:30;background:var(--card);border:1px solid var(--line);border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,.35);min-width:150px;overflow:hidden}
+.gdmenu div{padding:11px 16px;cursor:pointer;display:flex;gap:8px;align-items:center}
+.reactbar{position:fixed;z-index:35;display:flex;gap:2px;background:var(--card);border:1px solid var(--line);border-radius:99px;padding:4px 6px;box-shadow:0 6px 18px rgba(0,0,0,.35)}
+.reactbar button{background:none!important;border:0;font-size:26px;line-height:1;padding:4px 7px;border-radius:50%;cursor:pointer;box-shadow:none}
+.reactbar button.on{background:rgba(217,28,46,.18)!important}
+.reacts{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.reacts:empty{display:none}
+.rchip{background:rgba(0,0,0,.09);border-radius:99px;padding:0 8px;font-size:13px;line-height:22px;cursor:pointer}
+.bubble.me .rchip{background:rgba(255,255,255,.25)}
+.rchip.mine{outline:1.5px solid currentColor}
+.bubble,.btext,.msgrow{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.msgrow img{-webkit-touch-callout:none}
+mark{background:#ffe066;color:#222;border-radius:3px;padding:0 1px}
 </style>
 </head>
 <body>
@@ -394,7 +423,7 @@ function pushPlugin(){
 async function registerToken(){try{if(sb&&me&&window.__pushToken)await sb.rpc("register_device",{p_uid:me.id,p_token:window.__pushToken})}catch(e){}}
 function unregisterDevice(){try{if(sb&&window.__pushToken)sb.rpc("unregister_device",{p_token:window.__pushToken}).then(()=>{},()=>{})}catch(e){}}
 function openFromPush(d){try{if(!me||!d||!d.tab)return;window.__openGroup=d.gid?+d.gid:undefined;tab=d.tab;shell()}catch(e){}}
-const QC_BUILD="2026-10-14 05:32 UTC";
+const QC_BUILD="2026-10-15 03:57 UTC";
 function verCard(){
  const c=window.Capacitor;
  if(!c||!c.isNativePlatform||!c.isNativePlatform())return "";
@@ -438,6 +467,7 @@ function ensurePush(){if(window.__pushToken)registerToken();else initPush()}
 function shell(){
  document.body.classList.remove("no-bgimg");
  if(tab!=="tools")window.__toolSub=undefined;
+ document.body.classList.toggle("nohdr",tab==="colleague"||tab==="qcgram");
  if(me&&window.__pushUid!==me.id){window.__pushUid=me.id;ensurePush()}
  $("#app").innerHTML=`<header><label id="pfl" style="cursor:pointer;z-index:1">${avatar(me.id,40)}<input type="file" id="pf" accept="image/*" style="display:none"></label><h1 style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);margin:0">سامانه کنترل کیفیت</h1><span title="${DBSTATE=="ok"?"اتصال به حافظه‌ی مشترک برقرار است":DBSTATE=="error"?"اتصال برقرار نشد؛ فقط ذخیره‌ی محلی":"حالت آفلاین/محلی؛ اطلاعات مشترک نیست"}" style="z-index:1;width:10px;height:10px;border-radius:99px;background:${DBSTATE=="ok"?"#1f7a5a":"#b7791f"}"></span><img src="${LOGO_W}" style="height:40px;width:auto;z-index:1;margin-inline-start:auto"></header>
  <main id="v"></main>
@@ -1010,23 +1040,36 @@ function groupChat(gid){
  if(groupUnread(gid)>0)markRead(gid);
  const msgs=S.gmsgs.filter(m=>m.groupId==gid).sort((a,b)=>a.at-b.at);
  const M=id=>S.gmsgs.find(x=>x.id==id);
- let lastDate=null;
- const rows=msgs.map(m=>{const rp=m.parent?M(m.parent):null;const mine=m.from==me.id;
- const dchip=fd(m.at);let chip="";
- if(dchip!=lastDate){chip=`<div class="datechip"><span>${dchip}</span></div>`;lastDate=dchip}
- const bubble=`<div class="bubble ${mine?"me":"other"}">
- ${!mine?`<div class="bname">${esc(uname(m.from))}</div>`:""}
- ${rp?`<div class="meta" data-jumpto="${rp.id}" style="opacity:.8;border-inline-start:2px solid currentColor;padding-inline-start:6px;margin-bottom:3px;cursor:pointer">${esc(uname(rp.from))}: ${esc((rp.text||"تصویر").slice(0,40))}</div>`:""}
- ${m.image?`<img src="${m.image}" style="width:200px;height:200px;object-fit:cover;border-radius:8px;margin-bottom:3px;display:block">`:""}
- ${m.text?`<div class="btext">${escn(m.text)}${m.edited?' <span style="opacity:.6;font-size:10px">(ویرایش‌شده)</span>':""}</div>`:""}
- <div class="btime">${fd(m.at,1).split(" ").slice(-1)[0]}</div>
- </div>`;
- return `${chip}<div class="msgrow ${mine?"me":"other"}" data-msgid="${m.id}">
- ${mine?avatar(m.from)+bubble:bubble+avatar(m.from)}
- </div>`}).join("");
- $("#v").innerHTML=`<div class="row" style="align-items:center"><button class="btn sm alt" id="gback" style="flex:0 0 auto">→ بازگشت</button><h3 style="flex:1;margin:0;cursor:pointer" id="gtitle">${esc(g.name)}</h3></div>
- <div style="max-height:60vh;overflow-y:auto;padding:4px" id="gmsgbox">${msgs.length?rows:'<p class="meta">هنوز پیامی نیست.</p>'}</div>
- <div class="meta" id="greplybox" style="display:none;margin:6px 0"></div>
+   let lastDate=null;
+  const qn=t=>String(t||"").replace(/ي/g,"ی").replace(/ك/g,"ک").replace(/[٠-٩]/g,d=>"۰۱۲۳۴۵۶۷۸۹"["٠١٢٣٤٥٦٧٨٩".indexOf(d)]).replace(/[0-9]/g,d=>"۰۱۲۳۴۵۶۷۸۹"[d]).toLowerCase();
+  const hl=(raw,q)=>{raw=String(raw||"");if(!q)return escn(raw);const nr=qn(raw),nq=qn(q);let out="",i=0;for(;;){const k=nr.indexOf(nq,i);if(k<0){out+=escn(raw.slice(i));break}out+=escn(raw.slice(i,k))+"<mark>"+escn(raw.slice(k,k+q.length))+"</mark>";i=k+Math.max(1,nq.length)}return out};
+  const reactsHtml=m=>{const gr={};Object.entries(m.reacts||{}).forEach(([u,e])=>{(gr[e]=gr[e]||[]).push(u)});return Object.entries(gr).sort((x,y)=>y[1].length-x[1].length).map(([e,us])=>`<span class="rchip ${us.includes(String(me.id))?"mine":""}" data-re="${e}">${e}${us.length>1?" "+us.length:""}</span>`).join("")};
+  function rowHtml(m,q){
+   const rp=m.parent?M(m.parent):null;const mine=m.from==me.id;
+   const dchip=fd(m.at);let chip="";
+   if(dchip!=lastDate){chip=`<div class="datechip"><span>${dchip}</span></div>`;lastDate=dchip}
+   const bubble=`<div class="bubble ${mine?"me":"other"}">
+   ${!mine?`<div class="bname">${esc(uname(m.from))}</div>`:""}
+   ${rp?`<div class="meta" data-jumpto="${rp.id}" style="opacity:.8;border-inline-start:2px solid currentColor;padding-inline-start:6px;margin-bottom:3px;cursor:pointer">${esc(uname(rp.from))}: ${esc((rp.text||"تصویر").slice(0,40))}</div>`:""}
+   ${m.image?`<img src="${m.image}" style="width:200px;height:200px;object-fit:cover;border-radius:8px;margin-bottom:3px;display:block">`:""}
+   ${m.text?`<div class="btext">${hl(m.text,q)}${m.edited?' <span style="opacity:.6;font-size:10px">(ویرایش‌شده)</span>':""}</div>`:""}
+   <div class="reacts" data-rx="${m.id}">${reactsHtml(m)}</div>
+   <div class="btime">${fd(m.at,1).split(" ").slice(-1)[0]}</div>
+   </div>`;
+   return `${chip}<div class="msgrow ${mine?"me":"other"}" data-msgid="${m.id}">
+   ${mine?avatar(m.from)+bubble:bubble+avatar(m.from)}
+   </div>`;
+  }
+  function buildRows(list,q){lastDate=null;return list.map(m=>rowHtml(m,q)).join("")}
+  const rows=buildRows(msgs,"");
+  const ARW='<svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>';
+  const DOTS='<svg class="fill" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="12" cy="19" r="1.9"/></svg>';
+  const MAG='<svg viewBox="0 0 24 24" width="18" height="18" style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l5 5"/></svg>';
+  $("#v").innerHTML=`<div class="chathdr" id="chathdr"><button type="button" class="chb" id="gback" aria-label="بازگشت">${ARW}</button><div class="cht" id="gtitle">${esc(g.name)}<small>${g.members.length} عضو</small></div><button type="button" class="chb" id="gdots" aria-label="منو">${DOTS}</button></div>
+  <div class="chathdr chsearch" id="gsearch" style="display:none"><button type="button" class="chb" id="gqx" aria-label="بستن جستجو">${ARW}</button><input id="gq" placeholder="جستجو در گفتگو…" autocomplete="off"><span class="meta" id="gqc"></span></div>
+  <div class="gdmenu" id="gdmenu"><div id="gdsearch">${MAG} جستجو</div></div>
+  <div style="max-height:calc(100vh - 230px);overflow-y:auto;padding:4px" id="gmsgbox">${msgs.length?rows:'<p class="meta">هنوز پیامی نیست.</p>'}</div>
+  <div class="meta" id="greplybox" style="display:none;margin:6px 0"></div>
  <div class="chatbar">
  <button class="btn sm" id="gsend" style="flex:0 0 auto;border-radius:99px;width:36px;height:36px;padding:0">➤</button>
  <input id="gtxt" placeholder="پیام...">
@@ -1069,19 +1112,65 @@ function groupChat(gid){
   menu.querySelectorAll("[data-mi]").forEach(el=>el.onclick=(e)=>{e.stopPropagation();items[+el.dataset.mi][1]()});
   setTimeout(()=>document.addEventListener("click",closeMenu,{once:true}),0);
  }
- document.querySelectorAll("[data-jumpto]").forEach(el=>el.onclick=()=>{const target=document.querySelector(`[data-msgid="${el.dataset.jumpto}"]`);
-  if(!target)return;target.scrollIntoView({behavior:"smooth",block:"center"});
-  target.style.transition="background-color .3s";const bub=target.querySelector(".bubble");
-  if(bub){const orig=bub.style.boxShadow;bub.style.boxShadow="0 0 0 2px #d91c2e";setTimeout(()=>{bub.style.boxShadow=orig},1200)}});
- document.querySelectorAll(".msgrow").forEach(row=>{
-  const mid=row.dataset.msgid;const m=M(mid);
-  row.oncontextmenu=(e)=>{e.preventDefault();e.stopPropagation();openMsgMenu(m,e.clientX,e.clientY)};
-  let t=null;
-  row.addEventListener("touchstart",(e)=>{t=setTimeout(()=>{const touch=e.touches[0];openMsgMenu(m,touch.clientX,touch.clientY)},500)});
-  row.addEventListener("touchend",()=>clearTimeout(t));
-  row.addEventListener("touchmove",()=>clearTimeout(t));
- });
- const memberNames=g.members.filter(id=>id!=me.id).map(id=>uname(id));
+   const REACTS=["👍","🙏","👎","😂","❤️"];
+  function toggleReact(m,e){m.reacts=m.reacts||{};if(m.reacts[me.id]===e)delete m.reacts[me.id];else m.reacts[me.id]=e;save("gmsgs");const el=document.querySelector(`[data-rx="${m.id}"]`);if(el)el.innerHTML=reactsHtml(m)}
+  let reactCloser=null;
+  function closeReact(){const r=document.getElementById("reactbar");if(r)r.remove();if(reactCloser){document.removeEventListener("click",reactCloser);reactCloser=null}}
+  function showReactBar(m,bub){
+   closeReact();closeMenu();
+   const r=document.createElement("div");r.id="reactbar";r.className="reactbar";
+   const mineE=(m.reacts||{})[me.id];
+   r.innerHTML=REACTS.map(e=>`<button type="button" data-e="${e}" class="${mineE===e?"on":""}">${e}</button>`).join("");
+   document.body.appendChild(r);
+   const rc=bub.getBoundingClientRect(),w=r.offsetWidth,h=r.offsetHeight;
+   let left=rc.left+rc.width/2-w/2;left=Math.max(8,Math.min(left,window.innerWidth-w-8));
+   let top=rc.top-h-6;if(top<8)top=rc.bottom+6;
+   r.style.left=left+"px";r.style.top=top+"px";
+   r.querySelectorAll("button").forEach(bt=>bt.onclick=ev=>{ev.stopPropagation();toggleReact(m,bt.dataset.e);closeReact()});
+   setTimeout(()=>{reactCloser=()=>closeReact();document.addEventListener("click",reactCloser)},0);
+  }
+  function bindRows(){
+   document.querySelectorAll("[data-jumpto]").forEach(el=>el.onclick=(ev)=>{ev.stopPropagation();const target=document.querySelector(`[data-msgid="${el.dataset.jumpto}"]`);
+    if(!target)return;target.scrollIntoView({behavior:"smooth",block:"center"});
+    const bub=target.querySelector(".bubble");
+    if(bub){const orig=bub.style.boxShadow;bub.style.boxShadow="0 0 0 2px #d91c2e";setTimeout(()=>{bub.style.boxShadow=orig},1200)}});
+   document.querySelectorAll(".msgrow").forEach(row=>{
+    const m=M(row.dataset.msgid);if(!m)return;
+    row.oncontextmenu=(e)=>{e.preventDefault();e.stopPropagation();window.__lpAt=Date.now();openMsgMenu(m,e.clientX,e.clientY)};
+    let t=null;
+    row.addEventListener("touchstart",(e)=>{t=setTimeout(()=>{window.__lpAt=Date.now();closeReact();const touch=e.touches[0];openMsgMenu(m,touch.clientX,touch.clientY)},500)});
+    row.addEventListener("touchend",()=>clearTimeout(t));
+    row.addEventListener("touchmove",()=>clearTimeout(t));
+    row.addEventListener("click",(e)=>{
+     if(window.__lpAt&&Date.now()-window.__lpAt<800)return;
+     if(e.target.closest("[data-jumpto]"))return;
+     const chip=e.target.closest(".rchip");
+     if(chip){e.stopPropagation();toggleReact(m,chip.dataset.re);return}
+     const bub=e.target.closest(".bubble");
+     if(bub)showReactBar(m,bub);
+    });
+   });
+  }
+  function renderBox(list,q){box.innerHTML=list.length?buildRows(list,q):'<p class="meta">'+(q?"نتیجه‌ای پیدا نشد.":"هنوز پیامی نیست.")+'</p>';bindRows()}
+  bindRows();
+  const hdr=$("#chathdr"),sbar=$("#gsearch"),dm=$("#gdmenu");
+  $("#gdots").onclick=(e)=>{
+   e.stopPropagation();
+   if(dm.style.display==="block"){dm.style.display="none";return}
+   const r=$("#gdots").getBoundingClientRect();dm.style.top=(r.bottom+4)+"px";dm.style.left="8px";dm.style.display="block";
+   setTimeout(()=>document.addEventListener("click",()=>{dm.style.display="none"},{once:true}),0);
+  };
+  function openSearch(){hdr.style.display="none";sbar.style.display="flex";const cb=document.querySelector(".chatbar");if(cb)cb.style.display="none";const qi=$("#gq");qi.value="";$("#gqc").textContent="";qi.focus()}
+  function closeSearch(){sbar.style.display="none";hdr.style.display="flex";const cb=document.querySelector(".chatbar");if(cb)cb.style.display="";renderBox(msgs,"");box.scrollTop=box.scrollHeight}
+  $("#gdsearch").onclick=(e)=>{e.stopPropagation();dm.style.display="none";openSearch()};
+  $("#gqx").onclick=closeSearch;
+  $("#gq").oninput=()=>{
+   const q=$("#gq").value.trim();
+   if(!q){renderBox(msgs,"");$("#gqc").textContent="";return}
+   const nq=qn(q);const res=msgs.filter(m=>m.text&&qn(m.text).includes(nq));
+   renderBox(res,q);$("#gqc").textContent=res.length?res.length+" نتیجه":"نتیجه‌ای نیست";
+  };
+const memberNames=g.members.filter(id=>id!=me.id).map(id=>uname(id));
  $("#gtxt").oninput=()=>{
   const v=$("#gtxt").value;
   const mm=v.match(/@([^\s@]*)$/);
@@ -1485,6 +1574,15 @@ function formulaModal(id){
   save("formulas");closeModal();units();
  };
 }
+
+/* ---- hide the bottom bar while the keyboard is open ---- */
+(function(){
+ const isText=el=>el&&(el.tagName==="TEXTAREA"||(el.tagName==="INPUT"&&!/^(file|checkbox|radio|button|submit|range|color)$/i.test(el.type||"")));
+ let t=null;
+ document.addEventListener("focusin",e=>{if(isText(e.target)){clearTimeout(t);document.body.classList.add("kb")}});
+ document.addEventListener("focusout",()=>{clearTimeout(t);t=setTimeout(()=>{if(!isText(document.activeElement))document.body.classList.remove("kb")},150)});
+ window.addEventListener("resize",()=>{if(!isText(document.activeElement))document.body.classList.remove("kb")});
+})();
 
 /* ---- Android back button: go back one page instead of closing the app ---- */
 (function(){
