@@ -250,6 +250,24 @@ mark{background:#ffe066;color:#222;border-radius:3px;padding:0 1px}
 .gdown{position:fixed;left:14px;bottom:calc(54px + 76px + env(safe-area-inset-bottom,0px));width:42px;height:42px;border-radius:50%;border:1px solid var(--line);background:var(--card);color:var(--ink);box-shadow:0 4px 12px rgba(0,0,0,.3);z-index:6;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
 .gdown svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
 body.kb .gdown{bottom:80px}
+
+/* customer picker */
+.clist{max-height:200px;overflow-y:auto;border:1px solid var(--line);border-radius:12px;margin:-4px 0 10px;background:var(--bg)}
+.clist div{padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--line);line-height:1.6}
+.clist div:last-child{border-bottom:0}
+.clist div:active{background:rgba(217,28,46,.14)}
+.clist .add{color:var(--accent);font-weight:700}
+
+/* shift: tabs + device table */
+.seg{display:flex;gap:6px;margin-bottom:12px}
+.seg button{flex:1;padding:8px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer;font-weight:700;box-shadow:none}
+.seg button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.dvh,.dvrow{display:grid;grid-template-columns:42px 112px 1fr;gap:6px;align-items:center}
+.dvh{padding:2px 0 4px;font-weight:700}
+.dvrow{padding:5px 0;border-top:1px solid var(--line)}
+.dvrow select,.dvrow input{margin:0;padding:8px 6px;min-width:0}
+.dvrow input:disabled{opacity:.4}
+.dvrow b{text-align:center}
 </style>
 </head>
 <body>
@@ -274,9 +292,9 @@ qc:[],tasks:[],shifts:[],ann:[],customers:["شرکت نمونه"]};
 let S,me=null,tab="home",q="";
 try{S=JSON.parse(localStorage.getItem("qcdb"))||D0}catch(e){S=D0}
 S.customers=S.customers||[];S.posts=S.posts||[];S.msgs=S.msgs||[];S.trainings=S.trainings||[];S.nc=S.nc||[];S.chart=S.chart||{};
-S.announcement=S.announcement||null;S.occasion=S.occasion||null;S.groups=S.groups||[];S.gmsgs=S.gmsgs||[];S.reads=S.reads||{};S.suggestions=S.suggestions||[];S.suggReads=S.suggReads||{};S.complaints=S.complaints||[];S.complaintSeen=S.complaintSeen||{};S.taskReads=S.taskReads||{};S.shiftReceipts=S.shiftReceipts||{};S.ncSeen=S.ncSeen||{};S.formulas=S.formulas||[];S.perms=S.perms||{};if(!S.perms.formula)S.perms.formula=["manager"];
+S.announcement=S.announcement||null;S.occasion=S.occasion||null;S.groups=S.groups||[];S.gmsgs=S.gmsgs||[];S.reads=S.reads||{};S.suggestions=S.suggestions||[];S.suggReads=S.suggReads||{};S.complaints=S.complaints||[];S.complaintSeen=S.complaintSeen||{};S.taskReads=S.taskReads||{};S.shiftReceipts=S.shiftReceipts||{};S.ncSeen=S.ncSeen||{};S.formulas=S.formulas||[];S.shiftPhotos=S.shiftPhotos||[];S.devStatus=S.devStatus||{};S.perms=S.perms||{};if(!S.perms.formula)S.perms.formula=["manager"];
 S.perms.qcgram=S.perms.qcgram||["manager","supervisor"];S.perms.train=S.perms.train||["manager","supervisor"];S.perms.group=S.perms.group||["manager","supervisor","senior"];S.perms.complaint=S.perms.complaint||["manager","supervisor"];S.perms.nc=S.perms.nc||["manager","supervisor"];S.perms.ncresponder=S.perms.ncresponder||["supervisor","senior","expert"];S.perms.shiftconfirm=S.perms.shiftconfirm||["manager","supervisor","senior"];
-const KEYS=["users","customers","perms","ann","qc","tasks","shifts","msgs","posts","trainings","nc","chart","announcement","occasion","groups","gmsgs","reads","suggestions","suggReads","complaints","complaintSeen","taskReads","shiftReceipts","ncSeen","formulas"];
+const KEYS=["users","customers","perms","ann","qc","tasks","shifts","msgs","posts","trainings","nc","chart","announcement","occasion","groups","gmsgs","reads","suggestions","suggReads","complaints","complaintSeen","taskReads","shiftReceipts","ncSeen","formulas","shiftPhotos","devStatus"];
 const SUPABASE_URL="https://rmowptvcexryfaagdyzo.supabase.co";
 const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJtb3dwdHZjZXhyeWZhYWdkeXpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA4MTk0MjAsImV4cCI6MjEwNjM5NTQyMH0.LCVWMxOh04g5xlXiffS52Cydsfn9nEHsj344PjYQImY";
 let sb=null,DBSTATE="nodb";
@@ -330,7 +348,7 @@ async function loadFromDb(){
  if(error){DBSTATE="error";return}
  (data||[]).forEach(row=>{if(row.value!==undefined&&row.value!==null)S[row.key]=row.value});
  S.customers=S.customers||[];S.posts=S.posts||[];S.msgs=S.msgs||[];S.trainings=S.trainings||[];S.nc=S.nc||[];S.chart=S.chart||{};
- S.announcement=S.announcement||null;S.occasion=S.occasion||null;S.groups=S.groups||[];S.gmsgs=S.gmsgs||[];S.reads=S.reads||{};S.suggestions=S.suggestions||[];S.suggReads=S.suggReads||{};S.complaints=S.complaints||[];S.complaintSeen=S.complaintSeen||{};S.taskReads=S.taskReads||{};S.shiftReceipts=S.shiftReceipts||{};S.ncSeen=S.ncSeen||{};S.formulas=S.formulas||[];S.perms=S.perms||{};if(!S.perms.formula)S.perms.formula=["manager"];
+ S.announcement=S.announcement||null;S.occasion=S.occasion||null;S.groups=S.groups||[];S.gmsgs=S.gmsgs||[];S.reads=S.reads||{};S.suggestions=S.suggestions||[];S.suggReads=S.suggReads||{};S.complaints=S.complaints||[];S.complaintSeen=S.complaintSeen||{};S.taskReads=S.taskReads||{};S.shiftReceipts=S.shiftReceipts||{};S.ncSeen=S.ncSeen||{};S.formulas=S.formulas||[];S.shiftPhotos=S.shiftPhotos||[];S.devStatus=S.devStatus||{};S.perms=S.perms||{};if(!S.perms.formula)S.perms.formula=["manager"];
  S.ann=S.ann||[];S.qc=S.qc||[];S.tasks=S.tasks||[];S.shifts=S.shifts||[];
  S.users=(S.users&&S.users.length)?S.users:D0.users;S.perms=S.perms||D0.perms;
  S.perms.qcgram=S.perms.qcgram||["manager","supervisor"];S.perms.train=S.perms.train||["manager","supervisor"];S.perms.group=S.perms.group||["manager","supervisor","senior"];S.perms.complaint=S.perms.complaint||["manager","supervisor"];S.perms.nc=S.perms.nc||["manager","supervisor"];S.perms.ncresponder=S.perms.ncresponder||["supervisor","senior","expert"];S.perms.shiftconfirm=S.perms.shiftconfirm||["manager","supervisor","senior"];
@@ -363,6 +381,8 @@ async function boot(){
 const $=s=>document.querySelector(s);
 const esc=t=>String(t??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const escn=t=>esc(t).replace(/\r?\n/g,"<br>");
+const nrm=t=>String(t||"").replace(/ي/g,"ی").replace(/ك/g,"ک").replace(/[٠-٩]/g,d=>"۰۱۲۳۴۵۶۷۸۹"["٠١٢٣٤٥٦٧٨٩".indexOf(d)]).replace(/[0-9]/g,d=>"۰۱۲۳۴۵۶۷۸۹"[d]).replace(/\u200c/g," ").toLowerCase();
+const hlMatch=(raw,q)=>{raw=String(raw||"");if(!q)return esc(raw);const nr=nrm(raw),nq=nrm(q);const k=nr.indexOf(nq);if(k<0||!nq)return esc(raw);return esc(raw.slice(0,k))+"<mark>"+esc(raw.slice(k,k+q.length))+"</mark>"+esc(raw.slice(k+q.length))};
 const fd=(t,time)=>new Date(t).toLocaleString("fa-IR-u-ca-persian",time?{dateStyle:"medium",timeStyle:"short"}:{dateStyle:"medium"});
 const can=p=>me.role=="manager"||(S.perms[p]||[]).includes(me.role);
 const uname=id=>(S.users.find(u=>u.id==id)||{}).name||"—";
@@ -427,8 +447,8 @@ function pushPlugin(){
 }
 async function registerToken(){try{if(sb&&me&&window.__pushToken)await sb.rpc("register_device",{p_uid:me.id,p_token:window.__pushToken})}catch(e){}}
 function unregisterDevice(){try{if(sb&&window.__pushToken)sb.rpc("unregister_device",{p_token:window.__pushToken}).then(()=>{},()=>{})}catch(e){}}
-function openFromPush(d){try{if(!me||!d||!d.tab)return;window.__openGroup=d.gid?+d.gid:undefined;tab=d.tab;shell()}catch(e){}}
-const QC_BUILD="2026-10-15 09:06 UTC";
+function openFromPush(d){try{if(!me||!d||!d.tab)return;window.__openGroup=d.gid?+d.gid:undefined;window.__shiftSub=d.sub||undefined;tab=d.tab;shell()}catch(e){}}
+const QC_BUILD="2026-10-16 08:15 UTC";
 function verCard(){
  const c=window.Capacitor;
  if(!c||!c.isNativePlatform||!c.isNativePlatform())return "";
@@ -569,15 +589,37 @@ function qc(){
 }
 function openQcModal(editIdx){
  const rec=(editIdx!=null&&editIdx>=0)?S.qc[editIdx]:null;
- openModal(`<h3>${rec?"ویرایش الزام":"ثبت اطلاعات کیفی جدید"}</h3><select id="mfc"><option value="">مشتری را انتخاب کنید (الزامی)</option>${S.customers.map(c=>`<option value="${esc(c)}" ${rec&&rec.c==c?"selected":""}>${esc(c)}</option>`).join("")}<option value="__new">+ مشتری جدید…</option></select><input id="mfcn" placeholder="نام مشتری جدید" style="display:none"><input id="mfp" placeholder="محصول (اختیاری)" value="${rec?esc(rec.p||""):""}"><input id="mfo" placeholder="سفارش (اختیاری)" value="${rec?esc(rec.o||""):""}"><textarea id="mft" rows="3" placeholder="اطلاعات">${rec?esc(rec.t):""}</textarea><div class="err" id="mfe"></div><button class="btn" id="mfb">${rec?"ذخیره":"ثبت"}</button>`);
- $("#mfc").onchange=()=>{$("#mfcn").style.display=$("#mfc").value=="__new"?"":"none"};
- $("#mfb").onclick=()=>{let c=$("#mfc").value;const t=$("#mft").value.trim();
-  if(c=="__new"){c=$("#mfcn").value.trim();if(!c)return $("#mfe").textContent="نام مشتری جدید را وارد کنید.";
-   if(!S.customers.includes(c))S.customers.push(c)}
-  if(!c)return $("#mfe").textContent="یک مشتری از فهرست انتخاب کنید.";
-  if(rec){rec.c=c;rec.p=$("#mfp").value.trim();rec.o=$("#mfo").value.trim();rec.t=t}
-  else S.qc.push({id:nid(),c,p:$("#mfp").value.trim(),o:$("#mfo").value.trim(),t,by:me.id,at:Date.now()});
-  save(["qc","customers"]);closeModal();qc()};
+ openModal(`<h3>${rec?"ویرایش الزام":"ثبت اطلاعات کیفی جدید"}</h3><input id="mfs" placeholder="جستجو یا نوشتن نام مشتری (الزامی)" autocomplete="off" value="${rec?esc(rec.c):""}"><div class="clist" id="mfl" style="display:none"></div><input id="mfp" placeholder="محصول (اختیاری)" value="${rec?esc(rec.p||""):""}"><input id="mfo" placeholder="سفارش (اختیاری)" value="${rec?esc(rec.o||""):""}"><textarea id="mft" rows="3" placeholder="اطلاعات">${rec?esc(rec.t):""}</textarea><div class="err" id="mfe"></div><button class="btn" id="mfb">${rec?"ذخیره":"ثبت"}</button>`);
+ let confirmedNew=false;
+ const inp=$("#mfs"),list=$("#mfl");
+ function renderList(){
+  const raw=inp.value.trim(),nq=nrm(raw);
+  const all=S.customers.slice().sort((x,y)=>String(x).localeCompare(String(y),"fa"));
+  const res=nq?all.filter(c=>nrm(c).includes(nq)).sort((x,y)=>(nrm(x).startsWith(nq)?0:1)-(nrm(y).startsWith(nq)?0:1)):all;
+  const exact=all.some(c=>nrm(c)===nq);
+  let html=res.slice(0,80).map(c=>`<div data-c="${esc(c)}">${hlMatch(c,raw)}</div>`).join("");
+  if(raw&&!exact)html+=`<div class="add" data-new="1">+ افزودن «${esc(raw)}» به‌عنوان مشتری جدید</div>`;
+  if(!html)html='<div class="meta" style="cursor:default">هنوز مشتری‌ای ثبت نشده است. نام را بنویسید.</div>';
+  list.innerHTML=html;list.style.display="block";
+  list.querySelectorAll("[data-c]").forEach(d=>d.onclick=()=>{inp.value=d.dataset.c;confirmedNew=false;list.style.display="none";$("#mfe").textContent=""});
+  const nb=list.querySelector("[data-new]");if(nb)nb.onclick=()=>{confirmedNew=true;list.style.display="none";$("#mfe").textContent=""};
+ }
+ inp.onfocus=renderList;
+ inp.oninput=()=>{confirmedNew=false;renderList()};
+ ["mfp","mfo","mft"].forEach(id=>$("#"+id).onfocus=()=>{list.style.display="none"});
+ $("#mfb").onclick=()=>{
+  const c=inp.value.trim(),t=$("#mft").value.trim(),err=m=>{$("#mfe").textContent=m};
+  if(!c)return err("یک مشتری انتخاب کنید یا نام او را بنویسید.");
+  const found=S.customers.find(x=>nrm(x)===nrm(c));
+  let name=found||c;
+  if(!found){
+   if(!(confirmedNew||(rec&&rec.c===c))){renderList();return err("این نام در فهرست نیست. از فهرست انتخاب کنید یا «افزودن به‌عنوان مشتری جدید» را بزنید.")}
+   S.customers.push(c);
+  }
+  if(rec){rec.c=name;rec.p=$("#mfp").value.trim();rec.o=$("#mfo").value.trim();rec.t=t}
+  else S.qc.push({id:nid(),c:name,p:$("#mfp").value.trim(),o:$("#mfo").value.trim(),t,by:me.id,at:Date.now()});
+  save(["qc","customers"]);closeModal();qc();
+ };
 }
 
 function tasksNewCount(){return S.tasks.filter(t=>t.to==me.id&&t.by!=me.id&&t.at>(S.taskReads[me.id]||0)).length}
@@ -662,30 +704,80 @@ function jalaliToDate(jy,jm,jd){
 function daysInJalaliMonth(jy,jm){for(let d=31;d>=29;d--){const pp=persianParts(jalaliToDate(jy,jm,d));if(pp.y==jy&&pp.m==jm&&pp.d==d)return d}return 29}
 function isoFromJalali(jy,jm,jd){const dt=jalaliToDate(jy,jm,jd);return dt.getUTCFullYear()+"-"+String(dt.getUTCMonth()+1).padStart(2,"0")+"-"+String(dt.getUTCDate()).padStart(2,"0")}
 
+/* ---------- shift handover: hub, items + photos, device status ---------- */
+const DEVST=["تولید","تنظیم","بدون پلن"];
 function shift(){
+ if(window.__shiftSub==="items")return shiftItems();
+ if(window.__shiftSub==="devices")return shiftDevices();
+ hubPage("تحویل شیفت‌ها",[
+  {go:"items",title:"موارد تحویلی",sub:"موارد و عکس‌های تحویل هر شیفت",icon:'<svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M9 11h7M9 15h7"/></svg>'},
+  {go:"devices",title:"وضعیت دستگاه‌ها انتهای شیفت",sub:"دستگاه ۱ تا ۱۰",icon:'<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4"/></svg>'}]);
+ document.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>{window.__shiftSub=b.dataset.go;shell()});
+}
+function shiftItems(){
+ window.__shiftSub="items";
  const g={};S.shifts.forEach(s=>{(g[s.date+"|"+s.sh]=g[s.date+"|"+s.sh]||[]).push(s)});
+ S.shiftPhotos.forEach(p=>{g[p.k]=g[p.k]||[]});
  const keys=Object.keys(g).sort().reverse();
- $("#v").innerHTML=`<div class="row" style="align-items:center"><h3 style="flex:1;margin:0">تحویل شیفت‌ها</h3>${can("shift")?`<button class="btn sm" id="shnew" style="flex:0 0 auto">+ ثبت جدید</button>`:""}</div>
+ $("#v").innerHTML=`${backBtn()}<div class="row" style="align-items:center"><h3 style="flex:1;margin:0">موارد تحویلی</h3>${can("shift")?`<button class="btn sm" id="shnew" style="flex:0 0 auto">+ ثبت جدید</button>`:""}</div>
  ${keys.length?keys.map(k=>{const [d,sh]=k.split("|");const items=g[k];const rec=S.shiftReceipts[k];
- const received=rec&&rec.upto>=items.length;
- return `<div class="card" data-shg="${k}" style="cursor:pointer"><b>${fd(d)} — شیفت ${sh}</b><br><span class="tag ${received?"ok":"wa"}">${received?"دریافت شده توسط "+esc(uname(rec.by)):"منتظر تأیید دریافت"}</span></div>`}).join(""):'<p class="meta">هنوز مطلبی ثبت نشده است.</p>'}`;
+ const received=items.length&&rec&&rec.upto>=items.length;const pc=S.shiftPhotos.filter(p=>p.k===k).length;
+ return `<div class="card" data-shg="${k}" style="cursor:pointer"><b>${fd(d)} — شیفت ${sh}</b><br>${items.length?`<span class="tag ${received?"ok":"wa"}">${received?"دریافت شده توسط "+esc(uname(rec.by)):"منتظر تأیید دریافت"}</span>`:'<span class="tag">فقط عکس</span>'}${pc?` <span class="tag">📷 ${pc}</span>`:""}</div>`}).join(""):'<p class="meta">هنوز مطلبی ثبت نشده است.</p>'}`;
  if(can("shift"))$("#shnew").onclick=()=>openShiftModal();
  document.querySelectorAll("[data-shg]").forEach(c=>c.onclick=()=>openShiftDetail(c.dataset.shg,g[c.dataset.shg]));
 }
-function openShiftDetail(k,items){
+function openShiftDetail(k,items,tabSel){
  const [d,sh]=k.split("|");
  const rec=S.shiftReceipts[k];
- const received=rec&&rec.upto>=items.length;
- openModal(`<h3>${fd(d)} — شیفت ${sh}</h3>
- ${items.map((s,i)=>`<div style="padding:6px 0;border-bottom:1px solid var(--line);${rec&&i<rec.upto?"color:var(--gray)":""}">${i+1}. ${esc(s.t)} <span class="meta">(${esc(uname(s.by))} · ${fd(s.at,1)})</span></div>`).join("")}
- ${!received&&can("shiftconfirm")?`<button class="btn sm" id="shrecv" style="margin-top:10px">دریافت</button>`:received?`<p class="meta" style="margin-top:10px">دریافت‌شده توسط ${esc(uname(rec.by))} در ${fd(rec.at,1)}</p>`:""}`);
- const b=document.getElementById("shrecv");
- if(b)b.onclick=()=>{S.shiftReceipts[k]={by:me.id,at:Date.now(),upto:items.length};save("shiftReceipts");closeModal();shift()};
+ const received=items.length&&rec&&rec.upto>=items.length;
+ const photos=S.shiftPhotos.filter(p=>p.k===k);
+ const tb=tabSel||"items";
+ const canDel=p=>me.role==="manager"||p.by==me.id;
+ let body="";
+ if(tb==="items"){
+  body=(items.length?items.map((s,i)=>`<div style="padding:6px 0;border-bottom:1px solid var(--line);${rec&&i<rec.upto?"color:var(--gray)":""}">${i+1}. ${escn(s.t)} <span class="meta">(${esc(uname(s.by))} · ${fd(s.at,1)})</span></div>`).join(""):'<p class="meta">موردی ثبت نشده است.</p>')
+  +(items.length?(!received&&can("shiftconfirm")?`<button class="btn sm" id="shrecv" style="margin-top:10px">دریافت</button>`:received?`<p class="meta" style="margin-top:10px">دریافت‌شده توسط ${esc(uname(rec.by))} در ${fd(rec.at,1)}</p>`:""):"");
+ }else{
+  body=(can("shift")?`<div class="row" style="flex-wrap:nowrap;align-items:center;margin-bottom:6px"><input type="file" accept="image/*" multiple id="shpf" style="margin-bottom:0;min-width:0"><button class="btn sm" id="shpu" style="flex:0 0 auto;min-width:0">آپلود</button></div><div class="err" id="shpe"></div>`:"")
+  +(photos.length?`<div class="pimgs">${photos.map((p,i)=>`<div class="pimg" data-ph="${i}" style="cursor:pointer"><img src="${p.url}" alt="" loading="lazy" onerror="this.classList.add('bad')">${canDel(p)?`<button type="button" class="pdelimg" data-phdel="${p.id}" aria-label="حذف عکس">✕</button>`:""}</div>`).join("")}</div>`:'<p class="meta">هنوز عکسی آپلود نشده است.</p>');
+ }
+ openModal(`<h3>${fd(d)} — شیفت ${sh}</h3><div class="seg"><button type="button" data-stab="items" class="${tb==="items"?"on":""}">موارد</button><button type="button" data-stab="photos" class="${tb==="photos"?"on":""}">عکس‌ها${photos.length?" ("+photos.length+")":""}</button></div>${body}`);
+ document.querySelectorAll("[data-stab]").forEach(b=>b.onclick=()=>openShiftDetail(k,items,b.dataset.stab));
+ const rb=document.getElementById("shrecv");
+ if(rb)rb.onclick=()=>{S.shiftReceipts[k]={by:me.id,at:Date.now(),upto:items.length};save("shiftReceipts");closeModal();shift()};
+ document.querySelectorAll("[data-ph]").forEach(el=>el.onclick=(e)=>{if(e.target.closest("[data-phdel]"))return;openShiftPhoto(k,items,+el.dataset.ph)});
+ document.querySelectorAll("[data-phdel]").forEach(bt=>bt.onclick=(e)=>{
+  e.stopPropagation();if(!confirm("این عکس حذف شود؟"))return;
+  const gone=S.shiftPhotos.find(x=>x.id==bt.dataset.phdel);
+  S.shiftPhotos=S.shiftPhotos.filter(x=>x.id!=bt.dataset.phdel);if(gone)removeStored(gone.url);
+  save("shiftPhotos");if(window.__shiftSub==="items")shiftItems();openShiftDetail(k,items,"photos");
+ });
+ const up=document.getElementById("shpu");
+ if(up)up.onclick=async()=>{
+  const files=[...document.getElementById("shpf").files],err=document.getElementById("shpe");
+  if(!files.length){err.textContent="عکسی انتخاب نشده است.";return}
+  if(photos.length+files.length>40){err.textContent="هر شیفت حداکثر ۴۰ عکس دارد.";return}
+  up.disabled=true;up.textContent="در حال آپلود…";
+  try{const urls=await Promise.all(files.map(f=>uploadImage(f,{compress:true})));
+   urls.filter(Boolean).forEach(u=>S.shiftPhotos.push({id:nid(),k,url:u,by:me.id,at:Date.now()}));
+  }catch(e){err.textContent="آپلود ناموفق بود.";up.disabled=false;up.textContent="آپلود";return}
+  save("shiftPhotos");if(window.__shiftSub==="items")shiftItems();openShiftDetail(k,items,"photos");
+ };
+}
+function openShiftPhoto(k,items,i){
+ const list=S.shiftPhotos.filter(p=>p.k===k),p=list[i];
+ if(!p)return openShiftDetail(k,items,"photos");
+ openModal(`<img src="${p.url}" alt="" style="width:100%;max-height:68vh;object-fit:contain;border-radius:10px;background:#000;display:block">
+ <div class="row" style="align-items:center;flex-wrap:nowrap;margin-top:10px"><button type="button" class="btn sm alt" id="spprev" ${i>0?"":"disabled"} style="min-width:0">قبلی</button><span class="meta" style="flex:1;text-align:center;min-width:0">${i+1} از ${list.length}<br>${esc(uname(p.by))}</span><button type="button" class="btn sm alt" id="spnext" ${i<list.length-1?"":"disabled"} style="min-width:0">بعدی</button></div>
+ <button type="button" class="btn sm" id="spback" style="margin-top:10px;width:100%">بازگشت به عکس‌ها</button>`);
+ document.getElementById("spprev").onclick=()=>openShiftPhoto(k,items,i-1);
+ document.getElementById("spnext").onclick=()=>openShiftPhoto(k,items,i+1);
+ document.getElementById("spback").onclick=()=>openShiftDetail(k,items,"photos");
 }
 function openShiftModal(){
  const todayP=persianParts(new Date());
- window.__shY=todayP.y;window.__shM=todayP.m;window.__shD=todayP.d;
- window.__shLines=[];
+ window.__shY=todayP.y;window.__shM=todayP.m;window.__shD=todayP.d;window.__shS="روز";
+ window.__shLines=[];window.__shFiles=[];
  const yrs=[];for(let y=todayP.y-3;y<=todayP.y+1;y++)yrs.push(y);
  function render(){
   const dim=daysInJalaliMonth(window.__shY,window.__shM);
@@ -694,24 +786,96 @@ function openShiftModal(){
  <select id="mshd">${Array.from({length:dim},(_,i)=>i+1).map(d=>`<option value="${d}" ${d==window.__shD?"selected":""}>${d}</option>`).join("")}</select>
  <select id="mshm">${JMONTHS.map((mn,i)=>`<option value="${i+1}" ${i+1==window.__shM?"selected":""}>${mn}</option>`).join("")}</select>
  <select id="mshy">${yrs.map(y=>`<option value="${y}" ${y==window.__shY?"selected":""}>${y}</option>`).join("")}</select>
- <select id="mss"><option value="روز">شیفت روز</option><option value="شب">شیفت شب</option></select></div>
+ <select id="mss"><option value="روز" ${window.__shS==="روز"?"selected":""}>شیفت روز</option><option value="شب" ${window.__shS==="شب"?"selected":""}>شیفت شب</option></select></div>
  ${window.__shLines.length?`<div class="card">${window.__shLines.map((l,i)=>`<div>${i+1}. ${esc(l)}</div>`).join("")}</div>`:""}
  <input id="mst" placeholder="یک مورد را بنویسید و Enter بزنید">
+ <div class="row" style="flex-wrap:nowrap;align-items:center;margin-bottom:10px"><label class="btn sm alt" style="min-width:0;cursor:pointer;margin:0;flex:0 0 auto">📷 افزودن عکس<input type="file" id="msph" accept="image/*" multiple style="display:none"></label><span class="meta" style="min-width:0">${window.__shFiles.length?window.__shFiles.length+" عکس انتخاب شده":""}</span></div>
+ <div class="err" id="mse"></div>
  <button class="btn" id="msb">پایان و ثبت</button>`;
  }
  function wire(){
   $("#mshy").onchange=()=>{window.__shY=+$("#mshy").value;openModal(render());wire()};
   $("#mshm").onchange=()=>{window.__shM=+$("#mshm").value;openModal(render());wire()};
   $("#mshd").onchange=()=>{window.__shD=+$("#mshd").value};
+  $("#mss").onchange=()=>{window.__shS=$("#mss").value};
+  $("#msph").onchange=()=>{window.__shFiles.push(...$("#msph").files);const v=$("#mst").value;openModal(render());wire();$("#mst").value=v};
   $("#mst").onkeydown=(e)=>{if(e.key=="Enter"){e.preventDefault();const v=$("#mst").value.trim();if(v){window.__shLines.push(v);openModal(render());wire();$("#mst").focus()}}};
-  $("#msb").onclick=()=>{const v=$("#mst").value.trim();if(v)window.__shLines.push(v);
-   if(!window.__shLines.length)return;
-   const iso=isoFromJalali(window.__shY,window.__shM,window.__shD);
-   const k=iso+"|"+$("#mss").value;
-   window.__shLines.forEach(t=>S.shifts.push({id:nid(),date:iso,sh:$("#mss").value,t,by:me.id,at:Date.now()}));
-   notify(usersWith("shiftconfirm"),"تحویل شیفت جدید",me.name+" گزارش شیفت ثبت کرد",{tab:"shift"});save("shifts");closeModal();shift()};
+  $("#msb").onclick=async()=>{const v=$("#mst").value.trim();if(v)window.__shLines.push(v);
+   if(!window.__shLines.length&&!window.__shFiles.length)return $("#mse").textContent="حداقل یک مورد یا یک عکس لازم است.";
+   const iso=isoFromJalali(window.__shY,window.__shM,window.__shD),sh=$("#mss").value,k=iso+"|"+sh;
+   const btn=$("#msb");btn.disabled=true;btn.textContent="در حال ثبت…";
+   try{
+    if(window.__shFiles.length){const urls=await Promise.all(window.__shFiles.map(f=>uploadImage(f,{compress:true})));urls.filter(Boolean).forEach(u=>S.shiftPhotos.push({id:nid(),k,url:u,by:me.id,at:Date.now()}))}
+   }catch(e){btn.disabled=false;btn.textContent="پایان و ثبت";return $("#mse").textContent="آپلود عکس ناموفق بود."}
+   window.__shLines.forEach(t=>S.shifts.push({id:nid(),date:iso,sh,t,by:me.id,at:Date.now()}));
+   notify(usersWith("shiftconfirm"),"تحویل شیفت جدید",me.name+" گزارش شیفت ثبت کرد",{tab:"shift",sub:"items"});
+   save(["shifts","shiftPhotos"]);closeModal();shift();
+  };
  }
  openModal(render());wire();
+}
+
+/* ---- end-of-shift device status ---- */
+function shiftDevices(){
+ window.__shiftSub="devices";
+ const keys=Object.keys(S.devStatus).sort().reverse();
+ $("#v").innerHTML=`${backBtn()}<div class="row" style="align-items:center;flex-wrap:nowrap"><h3 style="flex:1;margin:0;min-width:0">وضعیت دستگاه‌ها انتهای شیفت</h3>${can("shift")?'<button class="btn sm" id="dvnew" style="flex:0 0 auto;min-width:0">+ ثبت جدید</button>':""}</div>
+ ${keys.length?keys.map(k=>{const r=S.devStatus[k],[d,sh]=k.split("|");const c=st=>r.rows.filter(x=>x.st===st).length;
+ return `<div class="card" data-dvk="${k}" style="cursor:pointer;margin-top:10px"><b>${fd(d)} — شیفت ${sh}</b><br><span class="meta">تولید ${c("تولید")} · تنظیم ${c("تنظیم")} · بدون پلن ${c("بدون پلن")} — ${esc(uname(r.by))}</span></div>`}).join(""):'<p class="meta" style="margin-top:10px">هنوز وضعیتی ثبت نشده است.</p>'}`;
+ const nb=document.getElementById("dvnew");if(nb)nb.onclick=()=>devForm(null);
+ document.querySelectorAll("[data-dvk]").forEach(c=>c.onclick=()=>devView(c.dataset.dvk));
+}
+function devView(k){
+ const r=S.devStatus[k];if(!r)return;const [d,sh]=k.split("|");
+ openModal(`<h3>${fd(d)} — شیفت ${sh}</h3><div class="dvh meta"><span>دستگاه</span><span>وضعیت</span><span>محصول</span></div>
+ ${r.rows.map(x=>`<div class="dvrow"><b>${x.n}</b><span class="tag ${x.st==="تولید"?"ok":x.st==="تنظیم"?"wa":""}">${esc(x.st)}</span><span>${x.st==="بدون پلن"?"—":esc(x.p)}</span></div>`).join("")}
+ <p class="meta" style="margin-top:8px">ثبت‌کننده: ${esc(uname(r.by))} · ${fd(r.at,1)}</p>
+ ${can("shift")?'<div class="row" style="flex-wrap:nowrap;margin-top:8px"><button class="btn sm" id="dvedit" style="min-width:0">ویرایش</button><button class="btn sm alt" id="dvdel" style="min-width:0">حذف</button></div>':""}`);
+ const e=document.getElementById("dvedit");if(e)e.onclick=()=>devForm(k);
+ const dl=document.getElementById("dvdel");if(dl)dl.onclick=()=>{if(!confirm("این ثبت حذف شود؟"))return;delete S.devStatus[k];save("devStatus");closeModal();shiftDevices()};
+}
+function devForm(editKey){
+ const todayP=persianParts(new Date());
+ let y=todayP.y,m=todayP.m,d=todayP.d,sh="روز";
+ let rows=Array.from({length:10},()=>({st:"",p:""}));
+ if(editKey&&S.devStatus[editKey]){
+  const [iso,s2]=editKey.split("|");const pp=persianParts(new Date(iso+"T12:00:00"));
+  y=pp.y;m=pp.m;d=pp.d;sh=s2;rows=S.devStatus[editKey].rows.map(r=>({st:r.st,p:r.p||""}));
+ }
+ const yrs=[];for(let yy=todayP.y-3;yy<=todayP.y+1;yy++)yrs.push(yy);
+ function render(){
+  const dim=daysInJalaliMonth(y,m);if(d>dim)d=dim;
+  openModal(`<h3>وضعیت دستگاه‌ها انتهای شیفت</h3><div class="row">
+  <select id="dvd">${Array.from({length:dim},(_,i)=>i+1).map(x=>`<option value="${x}" ${x==d?"selected":""}>${x}</option>`).join("")}</select>
+  <select id="dvm">${JMONTHS.map((mn,i)=>`<option value="${i+1}" ${i+1==m?"selected":""}>${mn}</option>`).join("")}</select>
+  <select id="dvy">${yrs.map(x=>`<option value="${x}" ${x==y?"selected":""}>${x}</option>`).join("")}</select>
+  <select id="dvs"><option value="روز" ${sh==="روز"?"selected":""}>شیفت روز</option><option value="شب" ${sh==="شب"?"selected":""}>شیفت شب</option></select></div>
+  <div class="dvh meta"><span>دستگاه</span><span>وضعیت</span><span>محصول</span></div>
+  ${rows.map((r,i)=>`<div class="dvrow"><b>${i+1}</b><select data-ds="${i}"><option value="">انتخاب…</option>${DEVST.map(x=>`<option ${r.st===x?"selected":""}>${x}</option>`).join("")}</select><input data-dp="${i}" placeholder="محصول" value="${esc(r.p)}" ${r.st==="بدون پلن"?"disabled":""}></div>`).join("")}
+  <div class="err" id="dverr"></div><button class="btn" id="dvsave">${editKey?"ذخیره‌ی تغییرات":"ثبت"}</button>`);
+  $("#dvy").onchange=()=>{y=+$("#dvy").value;render()};
+  $("#dvm").onchange=()=>{m=+$("#dvm").value;render()};
+  $("#dvd").onchange=()=>{d=+$("#dvd").value};
+  $("#dvs").onchange=()=>{sh=$("#dvs").value};
+  document.querySelectorAll("[data-ds]").forEach(sel=>sel.onchange=()=>{
+   const i=+sel.dataset.ds;rows[i].st=sel.value;const pi=document.querySelector(`[data-dp="${i}"]`);
+   if(sel.value==="بدون پلن"){rows[i].p="";pi.value="";pi.disabled=true}else pi.disabled=false;
+  });
+  document.querySelectorAll("[data-dp]").forEach(inp=>inp.oninput=()=>{rows[+inp.dataset.dp].p=inp.value});
+  $("#dvsave").onclick=()=>{
+   const err=t=>{$("#dverr").textContent=t};
+   for(let i=0;i<10;i++){
+    if(!rows[i].st)return err("وضعیت دستگاه "+(i+1)+" را انتخاب کنید.");
+    if(rows[i].st!=="بدون پلن"&&!rows[i].p.trim())return err("محصول دستگاه "+(i+1)+" را بنویسید.");
+   }
+   const k=isoFromJalali(y,m,d)+"|"+sh;
+   if(S.devStatus[k]&&k!==editKey&&!confirm("برای این تاریخ و شیفت قبلاً ثبت شده است. جایگزین شود؟"))return;
+   if(editKey&&editKey!==k)delete S.devStatus[editKey];
+   S.devStatus[k]={rows:rows.map((r,i)=>({n:i+1,st:r.st,p:r.st==="بدون پلن"?"":r.p.trim()})),by:me.id,at:Date.now()};
+   save("devStatus");closeModal();shiftDevices();
+  };
+ }
+ render();
 }
 
 const ICON_USERS='<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3 2.5-5 6-5s6 2 6 5"/><circle cx="17" cy="8" r="2.5"/><path d="M15 13c2.5.3 4 2 4 4"/></svg>';
@@ -1596,7 +1760,7 @@ function formulaModal(id){
 
 /* ---- back button: always one level UP in the app structure ---- */
 (function(){
- const FLAGS=["__toolSub","__openNc","__openPost","__adminSub","__adminHomeSub","__openTask","__openGroup","__openComplaint","__editUser","__editPost","__qcSel"];
+ const FLAGS=["__shiftSub","__toolSub","__openNc","__openPost","__adminSub","__adminHomeSub","__openTask","__openGroup","__openComplaint","__editUser","__editPost","__qcSel"];
  function clearAll(){FLAGS.forEach(k=>{window[k]=undefined})}
  window.resetNav=clearAll;
  window.appBack=function(){
@@ -1610,6 +1774,7 @@ function formulaModal(id){
    case "home":return false;
    case "nc":if(W.__openNc){W.__openNc=undefined;return go("nc")}clearAll();return go("ncc");
    case "complaints":if(W.__openComplaint){W.__openComplaint=undefined;return go("complaints")}clearAll();return go("ncc");
+   case "shift":if(W.__shiftSub){W.__shiftSub=undefined;return go("shift")}clearAll();return go("home");
    case "tools":if(W.__toolSub){W.__toolSub=undefined;return go("tools")}clearAll();return go("home");
    case "tasks":if(W.__openTask){W.__openTask=undefined;return go("tasks")}clearAll();return go("home");
    case "qcgram":if(W.__openPost){W.__openPost=undefined;W.__piIdx=0;return go("qcgram")}clearAll();return go("home");
@@ -1635,4 +1800,4 @@ function formulaModal(id){
 boot();
 </script>
 </body>
-</html>
+ </html>
