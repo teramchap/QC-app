@@ -268,6 +268,15 @@ body.kb .gdown{bottom:80px}
 .dvrow select,.dvrow input{margin:0;padding:8px 6px;min-width:0}
 .dvrow input:disabled{opacity:.4}
 .dvrow b{text-align:center}
+
+/* media viewer */
+#imgviewer{position:fixed;inset:0;z-index:80;background:#000;display:flex;flex-direction:column;color:#fff}
+#imgviewer .vtop{display:flex;align-items:center;gap:12px;padding:10px 14px;padding-top:calc(10px + env(safe-area-inset-top,0px));background:rgba(0,0,0,.65);line-height:1.5}
+#imgviewer .vtop button{background:none;border:0;color:#fff;font-size:22px;width:40px;height:40px;cursor:pointer;padding:0}
+#imgviewer .vimg{flex:1;display:flex;align-items:center;justify-content:center;min-height:0;position:relative}
+#imgviewer img{max-width:100%;max-height:100%;object-fit:contain}
+#imgviewer .vnav{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.2);border:0;color:#fff;font-size:26px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+#imgviewer .vprev{right:10px}#imgviewer .vnext{left:10px}
 </style>
 </head>
 <body>
@@ -277,7 +286,7 @@ window.onerror=function(msg,src,line){try{alert("یک خطا رخ داد (لطف
 function toast(msg){
  try{
   let t=document.getElementById("toastbox");
-  if(!t){t=document.createElement("div");t.id="toastbox";t.style.cssText="position:fixed;left:50%;bottom:70px;transform:translateX(-50%);background:var(--accent);color:#ffffff;padding:10px 18px;border-radius:99px;font-size:13px;z-index:50;box-shadow:0 2px 10px rgba(0,0,0,.25);transition:opacity .3s";document.body.appendChild(t)}
+  if(!t){t=document.createElement("div");t.id="toastbox";t.style.cssText="pointer-events:none;position:fixed;left:50%;bottom:70px;transform:translateX(-50%);background:var(--accent);color:#ffffff;padding:10px 18px;border-radius:99px;font-size:13px;z-index:50;box-shadow:0 2px 10px rgba(0,0,0,.25);transition:opacity .3s";document.body.appendChild(t)}
   t.textContent=msg;t.style.opacity="1";
   clearTimeout(window.__toastT);window.__toastT=setTimeout(()=>{t.style.opacity="0"},1600);
  }catch(e){}
@@ -298,12 +307,12 @@ const KEYS=["users","customers","perms","ann","qc","tasks","shifts","msgs","post
 const SUPABASE_URL="https://rmowptvcexryfaagdyzo.supabase.co";
 const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJtb3dwdHZjZXhyeWZhYWdkeXpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA4MTk0MjAsImV4cCI6MjEwNjM5NTQyMH0.LCVWMxOh04g5xlXiffS52Cydsfn9nEHsj344PjYQImY";
 let sb=null,DBSTATE="nodb";
-const save=(keys)=>{
+const save=(keys,quiet)=>{
  const ks=keys?(Array.isArray(keys)?keys:[keys]):KEYS;
  if(me&&ks.includes("users")){const idx=S.users.findIndex(u=>u.id==me.id);if(idx>-1)S.users[idx]=me}
  try{localStorage.setItem("qcdb",JSON.stringify(S))}catch(e){}
- if(sb)ks.forEach(async k=>{try{const {error}=await sb.from("app_state").upsert({key:k,value:S[k],updated_at:new Date().toISOString()},{onConflict:"key"});if(error)DBSTATE="error"}catch(e){DBSTATE="error"}});
- toast("ذخیره شد");
+ if(sb)ks.forEach(async k=>{try{const ts=new Date().toISOString();window.__ver=window.__ver||{};window.__ver[k]=Date.parse(ts);const {error}=await sb.from("app_state").upsert({key:k,value:S[k],updated_at:ts},{onConflict:"key"});if(error)DBSTATE="error"}catch(e){DBSTATE="error"}});
+ if(!quiet)toast("ذخیره شد");
 };
 function removeStored(url){
  try{
@@ -344,9 +353,10 @@ async function uploadImage(f,opts){
  return await fileToDataURL(f);
 }
 async function loadFromDb(){
- const {data,error}=await sb.from("app_state").select("key,value");
+ const {data,error}=await sb.from("app_state").select("key,value,updated_at");
  if(error){DBSTATE="error";return}
  (data||[]).forEach(row=>{if(row.value!==undefined&&row.value!==null)S[row.key]=row.value});
+ window.__ver={};(data||[]).forEach(r=>{window.__ver[r.key]=Date.parse(r.updated_at)});
  S.customers=S.customers||[];S.posts=S.posts||[];S.msgs=S.msgs||[];S.trainings=S.trainings||[];S.nc=S.nc||[];S.chart=S.chart||{};
  S.announcement=S.announcement||null;S.occasion=S.occasion||null;S.groups=S.groups||[];S.gmsgs=S.gmsgs||[];S.reads=S.reads||{};S.suggestions=S.suggestions||[];S.suggReads=S.suggReads||{};S.complaints=S.complaints||[];S.complaintSeen=S.complaintSeen||{};S.taskReads=S.taskReads||{};S.shiftReceipts=S.shiftReceipts||{};S.ncSeen=S.ncSeen||{};S.formulas=S.formulas||[];S.shiftPhotos=S.shiftPhotos||[];S.devStatus=S.devStatus||{};S.perms=S.perms||{};if(!S.perms.formula)S.perms.formula=["manager"];
  S.ann=S.ann||[];S.qc=S.qc||[];S.tasks=S.tasks||[];S.shifts=S.shifts||[];
@@ -354,12 +364,12 @@ async function loadFromDb(){
  S.perms.qcgram=S.perms.qcgram||["manager","supervisor"];S.perms.train=S.perms.train||["manager","supervisor"];S.perms.group=S.perms.group||["manager","supervisor","senior"];S.perms.complaint=S.perms.complaint||["manager","supervisor"];S.perms.nc=S.perms.nc||["manager","supervisor"];S.perms.ncresponder=S.perms.ncresponder||["supervisor","senior","expert"];S.perms.shiftconfirm=S.perms.shiftconfirm||["manager","supervisor","senior"];
  DBSTATE="ok";
  sb.channel("app_state_changes").on("postgres_changes",{event:"*",schema:"public",table:"app_state"},payload=>{
-  const row=payload.new;if(row&&row.key){S[row.key]=row.value;
-   if(row.key=="users"&&me){const fresh=S.users.find(u=>u.id==me.id);if(fresh)me=fresh}
-   const ae=document.activeElement;const typing=ae&&(ae.tagName=="INPUT"||ae.tagName=="TEXTAREA"||ae.tagName=="SELECT");
-   if(me&&!typing)shell();
-  }
+  const row=payload.new;
+  if(!row||!row.key)return;
+  if(row.value===undefined){syncNow();return}
+  applyRemote([{key:row.key,value:row.value,ts:Date.parse(row.updated_at)}]);
  }).subscribe();
+ startSync();
 }
 function setTheme(mode){
  document.documentElement.setAttribute("data-theme",mode);
@@ -448,7 +458,7 @@ function pushPlugin(){
 async function registerToken(){try{if(sb&&me&&window.__pushToken)await sb.rpc("register_device",{p_uid:me.id,p_token:window.__pushToken})}catch(e){}}
 function unregisterDevice(){try{if(sb&&window.__pushToken)sb.rpc("unregister_device",{p_token:window.__pushToken}).then(()=>{},()=>{})}catch(e){}}
 function openFromPush(d){try{if(!me||!d||!d.tab)return;window.__openGroup=d.gid?+d.gid:undefined;window.__shiftSub=d.sub||undefined;tab=d.tab;shell()}catch(e){}}
-const QC_BUILD="2026-10-16 08:15 UTC";
+const QC_BUILD="2026-10-17 11:34 UTC";
 function verCard(){
  const c=window.Capacitor;
  if(!c||!c.isNativePlatform||!c.isNativePlatform())return "";
@@ -469,7 +479,7 @@ async function initPush(){
    window.__pushBound=true;
    PN.addListener("registration",t=>{window.__pushToken=t.value;pushSet("ok");pushDone();registerToken()});
    PN.addListener("registrationError",e=>{pushSet("error: "+((e&&(e.error||e.message))||"unknown"));pushDone()});
-   PN.addListener("pushNotificationReceived",n=>{toast((n.title||"")+(n.body?": "+n.body:""))});
+   PN.addListener("pushNotificationReceived",n=>{toast((n.title||"")+(n.body?": "+n.body:""));syncNow()});
    PN.addListener("pushNotificationActionPerformed",a=>{openFromPush((a.notification&&a.notification.data)||{})});
   }
   let p=await PN.checkPermissions();
@@ -891,6 +901,7 @@ function admin(){
   <button data-as="perms"><span class="ic">${ICON_PERMS}</span>دسترسی‌ها</button>
   <button data-as="chart"><span class="ic">${ICON_CHART}</span>چارت</button>
   <button data-as="home"><span class="ic">${ICON_HOME2}</span>مدیریت صفحه اصلی</button>
+   <button data-as="backup"><span class="ic">${ICON_BACKUP}</span>پشتیبان‌گیری</button>
   </div>`;
   document.querySelectorAll("[data-as]").forEach(b=>b.onclick=()=>{window.__adminSub=b.dataset.as;admin()});
   return;
@@ -900,6 +911,77 @@ function admin(){
  else if(sub=="perms")renderAdminPerms(BK);
  else if(sub=="chart")renderAdminChart(BK);
  else if(sub=="home")renderAdminHome(BK);
+ else if(sub=="backup")renderAdminBackup(BK);
+}
+
+const ICON_BACKUP='<svg viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6"/><path d="M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></svg>';
+async function saveTextFile(name,text){
+ const c=window.Capacitor;
+ if(c&&c.isNativePlatform&&c.isNativePlatform()){
+  try{
+   const has=n=>c.isPluginAvailable&&c.isPluginAvailable(n);
+   if(has("Filesystem")&&has("Share")){
+    const FS=(c.Plugins&&c.Plugins.Filesystem)||c.registerPlugin("Filesystem"),SH=(c.Plugins&&c.Plugins.Share)||c.registerPlugin("Share");
+    const r=await FS.writeFile({path:name,data:text,directory:"CACHE",encoding:"utf8"});
+    await SH.share({title:"پشتیبان سامانه کنترل کیفیت",url:r.uri,dialogTitle:"ذخیره یا ارسال نسخه‌ی پشتیبان"});
+    return true;
+   }
+   alert("برای پشتیبان‌گیری در اپ اندروید باید نسخه‌ی جدید APK نصب شود.");return false;
+  }catch(e){if(/cancel/i.test(String(e&&e.message||e)))return true;alert("ذخیره‌ی فایل ناموفق بود.");return false}
+ }
+ try{const f=new File([text],name,{type:"application/json"});if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:name});return true}}catch(e){}
+ const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([text],{type:"application/json"}));a.download=name;document.body.appendChild(a);a.click();
+ setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},2000);return true;
+}
+function buildBackup(){
+ const data={};KEYS.forEach(k=>{if(S[k]!==undefined)data[k]=S[k]});
+ return {app:"qc-system",version:1,exportedAt:new Date().toISOString(),exportedBy:me?me.name:"",data};
+}
+async function exportBackup(tag){
+ const obj=buildBackup();
+ const name="qc-backup-"+(tag?tag+"-":"")+obj.exportedAt.slice(0,16).replace(/[:T]/g,"-")+".json";
+ const ok=await saveTextFile(name,JSON.stringify(obj));
+ if(ok){try{localStorage.setItem("qclastbackup",obj.exportedAt)}catch(e){}}
+ return ok;
+}
+const BK_LABELS={users:"کاربران",qc:"اطلاعات کیفی",tasks:"کارها",shifts:"موارد تحویل شیفت",shiftPhotos:"عکس‌های شیفت",devStatus:"وضعیت دستگاه‌ها",nc:"عدم انطباق‌ها",complaints:"شکایات",suggestions:"انتقادات و پیشنهادات",trainings:"آموزش‌ها",posts:"پست‌های QCgram",groups:"گروه‌های گفتگو",gmsgs:"پیام‌های گفتگو",customers:"مشتری‌ها",formulas:"فرمول‌های تبدیل"};
+function renderAdminBackup(BK){
+ let last="";try{const t=localStorage.getItem("qclastbackup");if(t)last=fd(Date.parse(t),1)}catch(e){}
+ $("#v").innerHTML=`${BK}<div class="card"><h3>نسخه‌ی پشتیبان</h3>
+ <p class="meta" style="line-height:2">همه‌ی اطلاعات سامانه (کاربران، اطلاعات کیفی، کارها، شیفت‌ها، گفتگوها و…) در یک فایل ذخیره می‌شود. عکس‌ها داخل فایل نیستند و فقط آدرسشان ذخیره می‌شود؛ خود عکس‌ها روی Storage می‌مانند.</p>
+ <p class="meta" style="line-height:2;color:var(--accent)">فایل شامل رمز عبور کاربران است. آن را جای امن نگه دارید.</p>
+ <button class="btn" id="bkdl" style="width:100%">دانلود نسخه‌ی پشتیبان</button>
+ <p class="meta" id="bkinfo" style="margin-top:8px">${last?"آخرین پشتیبان‌گیری روی این دستگاه: "+last:"هنوز پشتیبانی گرفته نشده است."}</p></div>
+ <div class="card"><h3>بازیابی از فایل</h3>
+ <p class="meta" style="line-height:2">فایل پشتیبان را انتخاب کنید. قبل از جایگزینی، خلاصه‌ی آن را می‌بینید و تأیید می‌گیرد.</p>
+ <input type="file" id="bkfile" accept=".json,application/json"><div class="err" id="bkerr"></div></div>`;
+ $("#abk").onclick=()=>{window.__adminSub=null;admin()};
+ $("#bkdl").onclick=async()=>{const b=$("#bkdl");b.disabled=true;await exportBackup();b.disabled=false;renderAdminBackup(BK)};
+ $("#bkfile").onchange=async()=>{
+  const f=$("#bkfile").files[0];if(!f)return;
+  const err=m=>{$("#bkerr").textContent=m};
+  let obj;try{obj=JSON.parse(await f.text())}catch(e){return err("این فایل معتبر نیست.")}
+  if(!obj||obj.app!=="qc-system"||!obj.data||typeof obj.data!=="object")return err("این فایل، نسخه‌ی پشتیبان این سامانه نیست.");
+  if(!Array.isArray(obj.data.users)||!obj.data.users.some(u=>u.role==="manager"))return err("فایل ناقص است: کاربر مدیر در آن نیست.");
+  const rows=Object.keys(BK_LABELS).filter(k=>obj.data[k]!==undefined).map(k=>{const v=obj.data[k];const n=Array.isArray(v)?v.length:Object.keys(v||{}).length;return `<div class="row" style="align-items:center"><span style="flex:1">${BK_LABELS[k]}</span><b>${n}</b></div>`}).join("");
+  openModal(`<h3>بازیابی نسخه‌ی پشتیبان</h3><p class="meta" style="line-height:2">تاریخ فایل: ${obj.exportedAt?fd(Date.parse(obj.exportedAt),1):"نامشخص"}${obj.exportedBy?" · "+esc(obj.exportedBy):""}</p>${rows}
+  <p style="color:var(--accent);line-height:2;margin:10px 0 6px"><b>همه‌ی اطلاعات فعلی سامانه با محتوای این فایل جایگزین می‌شود، از جمله کاربران و رمزها.</b></p>
+  <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:13px"><input type="checkbox" id="bksafe" checked style="width:auto;margin:0"> قبل از بازیابی از وضعیت فعلی هم پشتیبان بگیر</label>
+  <div class="err" id="bkerr2"></div><button class="btn" id="bkgo" style="width:100%">بازیابی</button>`);
+  $("#bkgo").onclick=async()=>{
+   const go=$("#bkgo");go.disabled=true;go.textContent="در حال بازیابی…";
+   if($("#bksafe").checked){const ok=await exportBackup("before-restore");if(!ok){go.disabled=false;go.textContent="بازیابی";$("#bkerr2").textContent="پشتیبان‌گیری از وضعیت فعلی انجام نشد؛ بازیابی متوقف شد.";return}}
+   const keys=KEYS.filter(k=>obj.data[k]!==undefined);
+   keys.forEach(k=>{S[k]=obj.data[k]});
+   ["customers","posts","msgs","trainings","nc","ann","qc","tasks","shifts","groups","gmsgs","suggestions","complaints","formulas","shiftPhotos"].forEach(k=>{S[k]=S[k]||[]});
+   ["reads","suggReads","complaintSeen","taskReads","shiftReceipts","ncSeen","devStatus","chart"].forEach(k=>{S[k]=S[k]||{}});
+   S.perms=S.perms||{};if(!S.perms.formula)S.perms.formula=["manager"];
+   save(keys);closeModal();
+   const f2=S.users.find(u=>u.id==me.id);
+   if(!f2||!f2.on){alert("نسخه‌ی بازیابی‌شده کاربر فعلی شما را ندارد؛ دوباره وارد شوید.");me=null;try{localStorage.removeItem("qcuid")}catch(e){}login();return}
+   me=f2;window.__adminSub="backup";shell();
+  };
+ };
 }
 function renderAdminUsers(BK){
  $("#v").innerHTML=`${BK}<div class="card"><h3>کاربران</h3>${S.users.map(u=>{const ed=window.__editUser==u.id;return `<div class="card" style="margin-bottom:8px">
@@ -1163,7 +1245,7 @@ function qcgramPost(id){
 function readKey(gid){return gid+":"+me.id}
 function groupUnread(gid){const lr=S.reads[readKey(gid)]||0;return S.gmsgs.filter(m=>m.groupId==gid&&m.from!=me.id&&m.at>lr).length}
 function totalUnread(){return S.groups.filter(g=>g.members.includes(me.id)).reduce((s,g)=>s+groupUnread(g.id),0)}
-function markRead(gid){S.reads[readKey(gid)]=Date.now();save("reads")}
+function markRead(gid){S.reads[readKey(gid)]=Date.now();save("reads",true)}
 function colleague(){
  const gid=window.__openGroup;
  if(gid)return groupChat(gid);
@@ -1196,9 +1278,11 @@ function groupInfo(gid){
  <div style="text-align:center">${g.photo?`<img src="${g.photo}" style="width:84px;height:84px;border-radius:99px;object-fit:cover">`:avatar(0,84)}
  ${isAdmin?`<div><label class="meta" style="cursor:pointer">تغییر عکس گروه<input type="file" id="gpphoto" accept="image/*" style="display:none"></label></div>`:""}
  <h3 style="margin:8px 0 2px">${esc(g.name)}</h3><p class="meta">مدیر گروه: ${esc(uname(g.createdBy))}</p></div>
+ ${mediaSection(gid)}
  <h3>اعضا</h3>
  ${g.members.map(id=>`<div class="row" style="align-items:center"><span style="flex:1">${esc(uname(id))}${id==g.createdBy?" (مدیر)":""}</span>${isAdmin&&id!=g.createdBy?`<button class="btn sm alt" data-rm="${id}">حذف</button>`:""}</div>`).join("")}
  ${isAdmin?`<h3>افزودن عضو</h3><select id="gpadd"><option value="">انتخاب کنید</option>${S.users.filter(u=>u.on&&!g.members.includes(u.id)).map(u=>`<option value="${u.id}">${esc(u.name)}</option>`).join("")}</select><button class="btn sm" id="gpaddb">افزودن</button>`:""}`);
+ document.querySelectorAll("[data-gm]").forEach(el=>el.onclick=()=>openChatMedia(gid,+el.dataset.gm));
  const ph=document.getElementById("gpphoto");if(ph)ph.onchange=async()=>{const f=ph.files[0];if(!f)return;g.photo=await uploadImage(f);save("groups");groupInfo(gid)};
  document.querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{g.members=g.members.filter(x=>x!=+b.dataset.rm);save("groups");groupInfo(gid)});
  const ab=document.getElementById("gpaddb");if(ab)ab.onclick=()=>{const v=+document.getElementById("gpadd").value;if(!v)return;if(!g.members.includes(v))g.members.push(v);save("groups");groupInfo(gid)};
@@ -1207,7 +1291,7 @@ function groupChat(gid){
  const g=S.groups.find(x=>x.id==gid);
  if(!g){window.__openGroup=null;return colleague()}
  if(groupUnread(gid)>0)markRead(gid);
- const msgs=S.gmsgs.filter(m=>m.groupId==gid).sort((a,b)=>a.at-b.at);
+ let msgs=S.gmsgs.filter(m=>m.groupId==gid).sort((a,b)=>a.at-b.at);
  const M=id=>S.gmsgs.find(x=>x.id==id);
    let lastDate=null;
   const qn=t=>String(t||"").replace(/ي/g,"ی").replace(/ك/g,"ک").replace(/[٠-٩]/g,d=>"۰۱۲۳۴۵۶۷۸۹"["٠١٢٣٤٥٦٧٨٩".indexOf(d)]).replace(/[0-9]/g,d=>"۰۱۲۳۴۵۶۷۸۹"[d]).toLowerCase();
@@ -1220,7 +1304,7 @@ function groupChat(gid){
    const bubble=`<div class="bubble ${mine?"me":"other"}">
    ${!mine?`<div class="bname">${esc(uname(m.from))}</div>`:""}
    ${rp?`<div class="meta" data-jumpto="${rp.id}" style="opacity:.8;border-inline-start:2px solid currentColor;padding-inline-start:6px;margin-bottom:3px;cursor:pointer">${esc(uname(rp.from))}: ${esc((rp.text||"تصویر").slice(0,40))}</div>`:""}
-   ${m.image?`<img src="${m.image}" style="width:200px;height:200px;object-fit:cover;border-radius:8px;margin-bottom:3px;display:block">`:""}
+   ${m.image?`<img class="chimg" src="${m.image}" loading="lazy" style="width:200px;height:200px;object-fit:cover;border-radius:8px;margin-bottom:3px;display:block;cursor:pointer">`:""}
    ${m.text?`<div class="btext">${hl(m.text,q)}${m.edited?' <span style="opacity:.6;font-size:10px">(ویرایش‌شده)</span>':""}</div>`:""}
    <div class="reacts" data-rx="${m.id}">${reactsHtml(m)}</div>
    <div class="btime">${fd(m.at,1).split(" ").slice(-1)[0]}</div>
@@ -1317,6 +1401,7 @@ function groupChat(gid){
     row.addEventListener("click",(e)=>{
      if(window.__lpAt&&Date.now()-window.__lpAt<800)return;
      if(e.target.closest("[data-jumpto]"))return;
+     if(e.target.closest(".chimg")){e.stopPropagation();openChatMedia(gid,m.id);return}
      const chip=e.target.closest(".rchip");
      if(chip){e.stopPropagation();toggleReact(m,chip.dataset.re);return}
      const bub=e.target.closest(".bubble");
@@ -1338,6 +1423,15 @@ function groupChat(gid){
   $("#gdsearch").onclick=(e)=>{e.stopPropagation();dm.style.display="none";openSearch()};
   $("#gqx").onclick=closeSearch;
   window.__gcloseSearch=closeSearch;
+  window.__gRefresh=()=>{
+   const sbr=document.getElementById("gsearch");if(!sbr||sbr.style.display!=="none")return;
+   const fresh=S.gmsgs.filter(m=>m.groupId==gid).sort((a,b)=>a.at-b.at);
+   if(fresh.length===msgs.length&&JSON.stringify(fresh)===JSON.stringify(msgs))return;
+   const near=(box.scrollHeight-box.scrollTop-box.clientHeight<120);
+   msgs=fresh;renderBox(fresh,"");
+   if(near)box.scrollTop=box.scrollHeight;
+   markRead(gid);
+  };
   $("#gq").oninput=()=>{
    const q=$("#gq").value.trim();
    if(!q){renderBox(msgs,"");$("#gqc").textContent="";return}
@@ -1559,6 +1653,109 @@ function ncReport(){
 }
 
 
+/* ---- keep the data fresh: polling + resume + realtime ---- */
+const TABKEYS={home:["announcement","occasion","posts","tasks","taskReads","nc","ncSeen","complaints","complaintSeen","suggestions","suggReads","gmsgs","groups","reads","shifts","shiftReceipts"],
+ qc:["qc","customers"],tasks:["tasks","taskReads"],shift:["shifts","shiftReceipts","shiftPhotos","devStatus"],train:["trainings"],
+ nc:["nc","ncSeen"],ncc:["nc","ncSeen","complaints","complaintSeen"],complaints:["complaints","complaintSeen"],suggestions:["suggestions","suggReads"],
+ tools:["formulas"],qcgram:["posts"],announce:["announcement"],occasion:["occasion"],admin:["announcement","occasion","posts"],profile:[],colleague:["groups","gmsgs","reads"]};
+function applyRemote(rows){
+ const changed=[];
+ window.__ver=window.__ver||{};
+ rows.forEach(r=>{
+  if(r.value===null||r.value===undefined)return;
+  if(r.ts)window.__ver[r.key]=r.ts;
+  if(JSON.stringify(S[r.key])!==JSON.stringify(r.value)){S[r.key]=r.value;changed.push(r.key)}
+ });
+ if(!changed.length)return;
+ try{localStorage.setItem("qcdb",JSON.stringify(S))}catch(e){}
+ if(!me)return;
+ if(changed.includes("users")){const f=S.users.find(u=>u.id==me.id);if(f)me=f}
+ const inChat=tab==="colleague"&&window.__openGroup;
+ if(inChat&&changed.includes("gmsgs")&&window.__gRefresh)window.__gRefresh();
+ const T=TABKEYS[tab]||[];
+ const global=changed.some(k=>k==="users"||k==="perms"||k==="chart");
+ if(global||changed.some(k=>T.includes(k)&&!(inChat&&k==="gmsgs")))window.__pendingRender=true;
+ flushRender();refreshBadges();
+}
+function flushRender(){
+ if(!window.__pendingRender||!me)return;
+ const ae=document.activeElement;
+ const typing=ae&&(ae.tagName==="TEXTAREA"||ae.tagName==="SELECT"||(ae.tagName==="INPUT"&&!/^(file|checkbox|radio|button|submit|range|color)$/i.test(ae.type||"")));
+ if(document.getElementById("modalbg")||document.getElementById("imgviewer")||typing)return;
+ window.__pendingRender=false;
+ const y=window.scrollY;shell();window.scrollTo(0,y);
+}
+function refreshBadges(){
+ try{
+  const b=document.querySelector('[data-bt="colleague"]');
+  if(b){let nb=b.querySelector(".nb");const n=totalUnread();
+   if(n){if(!nb){nb=document.createElement("span");nb.className="nb";b.appendChild(nb)}nb.textContent=n}else if(nb)nb.remove()}
+ }catch(e){}
+}
+let syncBusy=false;
+async function syncNow(){
+ if(!sb||!me||syncBusy)return;
+ syncBusy=true;
+ try{
+  const head=await sb.from("app_state").select("key,updated_at");
+  if(head.error||!head.data)return;
+  window.__ver=window.__ver||{};
+  const stale=head.data.filter(r=>!(window.__ver[r.key]>=Date.parse(r.updated_at))).map(r=>r.key);
+  if(!stale.length)return;
+  const res=await sb.from("app_state").select("key,value,updated_at").in("key",stale);
+  if(res.error||!res.data)return;
+  applyRemote(res.data.map(r=>({key:r.key,value:r.value,ts:Date.parse(r.updated_at)})));
+ }catch(e){}finally{syncBusy=false}
+}
+function startSync(){
+ if(window.__syncOn)return;window.__syncOn=true;
+ setInterval(()=>{if(!document.hidden){syncNow();flushRender()}},5000);
+ document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(syncNow,150)});
+ window.addEventListener("focus",()=>setTimeout(syncNow,150));
+ window.addEventListener("online",()=>setTimeout(syncNow,300));
+ try{
+  const c=window.Capacitor;
+  if(c&&c.isNativePlatform&&c.isNativePlatform()){
+   const A=(c.Plugins&&c.Plugins.App)||c.registerPlugin("App");
+   A.addListener("appStateChange",st=>{if(st&&st.isActive)setTimeout(syncNow,200)});
+  }
+ }catch(e){}
+}
+
+/* ---- full-screen media viewer + group media ---- */
+function closeMediaViewer(){const v=document.getElementById("imgviewer");if(v)v.remove()}
+function openMediaViewer(items,idx){
+ closeMediaViewer();
+ if(!items.length)return;
+ let i=Math.max(0,Math.min(idx,items.length-1));
+ const v=document.createElement("div");v.id="imgviewer";
+ v.innerHTML=`<div class="vtop"><button type="button" id="vclose" aria-label="بستن">✕</button><div class="vinfo" id="vinfo"></div></div><div class="vimg"><img id="vimg" alt=""><button type="button" class="vnav vprev" id="vprev" aria-label="قبلی">›</button><button type="button" class="vnav vnext" id="vnext" aria-label="بعدی">‹</button></div>`;
+ document.body.appendChild(v);
+ function show(){
+  const it=items[i];
+  document.getElementById("vimg").src=it.url;
+  document.getElementById("vinfo").innerHTML=`<b>${esc(it.by?uname(it.by):"")}</b><br><span style="opacity:.8;font-size:12px">${it.at?fd(it.at,1):""} · ${i+1} از ${items.length}</span>`;
+  document.getElementById("vprev").style.display=i>0?"flex":"none";
+  document.getElementById("vnext").style.display=i<items.length-1?"flex":"none";
+ }
+ document.getElementById("vclose").onclick=closeMediaViewer;
+ document.getElementById("vprev").onclick=()=>{if(i>0){i--;show()}};
+ document.getElementById("vnext").onclick=()=>{if(i<items.length-1){i++;show()}};
+ let x0=null;
+ v.addEventListener("touchstart",e=>{x0=e.touches[0].clientX},{passive:true});
+ v.addEventListener("touchend",e=>{if(x0===null)return;const dx=e.changedTouches[0].clientX-x0;x0=null;if(dx<-50&&i<items.length-1){i++;show()}else if(dx>50&&i>0){i--;show()}});
+ show();
+}
+function groupMedia(gid){return S.gmsgs.filter(m=>m.groupId==gid&&m.image).sort((a,b)=>b.at-a.at)}
+function openChatMedia(gid,mid){
+ const list=groupMedia(gid);
+ openMediaViewer(list.map(m=>({url:m.image,by:m.from,at:m.at})),Math.max(0,list.findIndex(m=>m.id==mid)));
+}
+function mediaSection(gid){
+ const list=groupMedia(gid);
+ return `<h3>رسانه‌ها${list.length?" ("+list.length+")":""}</h3>`+(list.length?`<div class="pimgs">${list.slice(0,60).map(m=>`<div class="pimg" data-gm="${m.id}" style="cursor:pointer"><img src="${m.image}" alt="" loading="lazy" onerror="this.classList.add('bad')"></div>`).join("")}</div>`+(list.length>60?`<p class="meta">${list.length-60} رسانه‌ی قدیمی‌تر هم هست؛ از داخل نمایشگر می‌توانید ورق بزنید.</p>`:""):'<p class="meta">رسانه‌ای ارسال نشده است.</p>');
+}
+
 /* ---- hubs ---- */
 const CHEV_SVG='<svg class="chev" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>';
 function hubPage(title,items){
@@ -1764,6 +1961,7 @@ function formulaModal(id){
  function clearAll(){FLAGS.forEach(k=>{window[k]=undefined})}
  window.resetNav=clearAll;
  window.appBack=function(){
+  if(document.getElementById("imgviewer")){closeMediaViewer();return true}
   if(document.getElementById("modalbg")){closeModal();return true}
   if(!document.getElementById("v"))return false;
   const rb=document.getElementById("reactbar");if(rb){rb.remove();return true}
