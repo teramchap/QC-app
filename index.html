@@ -277,6 +277,11 @@ body.kb .gdown{bottom:80px}
 #imgviewer img{max-width:100%;max-height:100%;object-fit:contain}
 #imgviewer .vnav{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.2);border:0;color:#fff;font-size:26px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
 #imgviewer .vprev{right:10px}#imgviewer .vnext{left:10px}
+/* chat input: up to 4 lines, then scroll */
+.chatbar{align-items:flex-end}
+.chatbar textarea{flex:1;min-width:0;margin:0;resize:none;line-height:1.6;padding:9px 14px;border-radius:20px;overflow-y:hidden;max-height:140px}
+.chatbar>*{margin-bottom:2px}
+.chatbar textarea{margin-bottom:0}
 </style>
 </head>
 <body>
@@ -301,9 +306,9 @@ qc:[],tasks:[],shifts:[],ann:[],customers:["شرکت نمونه"]};
 let S,me=null,tab="home",q="";
 try{S=JSON.parse(localStorage.getItem("qcdb"))||D0}catch(e){S=D0}
 S.customers=S.customers||[];S.posts=S.posts||[];S.msgs=S.msgs||[];S.trainings=S.trainings||[];S.nc=S.nc||[];S.chart=S.chart||{};
-S.announcement=S.announcement||null;S.occasion=S.occasion||null;S.groups=S.groups||[];S.gmsgs=S.gmsgs||[];S.reads=S.reads||{};S.suggestions=S.suggestions||[];S.suggReads=S.suggReads||{};S.complaints=S.complaints||[];S.complaintSeen=S.complaintSeen||{};S.taskReads=S.taskReads||{};S.shiftReceipts=S.shiftReceipts||{};S.ncSeen=S.ncSeen||{};S.formulas=S.formulas||[];S.shiftPhotos=S.shiftPhotos||[];S.devStatus=S.devStatus||{};S.perms=S.perms||{};if(!S.perms.formula)S.perms.formula=["manager"];
+S.announcement=S.announcement||null;S.occasion=S.occasion||null;S.groups=S.groups||[];S.gmsgs=S.gmsgs||[];S.reads=S.reads||{};S.suggestions=S.suggestions||[];S.suggReads=S.suggReads||{};S.complaints=S.complaints||[];S.complaintSeen=S.complaintSeen||{};S.taskReads=S.taskReads||{};S.shiftReceipts=S.shiftReceipts||{};S.ncSeen=S.ncSeen||{};S.formulas=S.formulas||[];S.shiftPhotos=S.shiftPhotos||[];S.qcTemp=S.qcTemp||[];S.devStatus=S.devStatus||{};S.perms=S.perms||{};if(!S.perms.formula)S.perms.formula=["manager"];
 S.perms.qcgram=S.perms.qcgram||["manager","supervisor"];S.perms.train=S.perms.train||["manager","supervisor"];S.perms.group=S.perms.group||["manager","supervisor","senior"];S.perms.complaint=S.perms.complaint||["manager","supervisor"];S.perms.nc=S.perms.nc||["manager","supervisor"];S.perms.ncresponder=S.perms.ncresponder||["supervisor","senior","expert"];S.perms.shiftconfirm=S.perms.shiftconfirm||["manager","supervisor","senior"];
-const KEYS=["users","customers","perms","ann","qc","tasks","shifts","msgs","posts","trainings","nc","chart","announcement","occasion","groups","gmsgs","reads","suggestions","suggReads","complaints","complaintSeen","taskReads","shiftReceipts","ncSeen","formulas","shiftPhotos","devStatus"];
+const KEYS=["users","customers","perms","ann","qc","tasks","shifts","msgs","posts","trainings","nc","chart","announcement","occasion","groups","gmsgs","reads","suggestions","suggReads","complaints","complaintSeen","taskReads","shiftReceipts","ncSeen","formulas","shiftPhotos","devStatus","qcTemp"];
 const SUPABASE_URL="https://rmowptvcexryfaagdyzo.supabase.co";
 const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJtb3dwdHZjZXhyeWZhYWdkeXpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA4MTk0MjAsImV4cCI6MjEwNjM5NTQyMH0.LCVWMxOh04g5xlXiffS52Cydsfn9nEHsj344PjYQImY";
 let sb=null,DBSTATE="nodb";
@@ -358,7 +363,7 @@ async function loadFromDb(){
  (data||[]).forEach(row=>{if(row.value!==undefined&&row.value!==null)S[row.key]=row.value});
  window.__ver={};(data||[]).forEach(r=>{window.__ver[r.key]=Date.parse(r.updated_at)});
  S.customers=S.customers||[];S.posts=S.posts||[];S.msgs=S.msgs||[];S.trainings=S.trainings||[];S.nc=S.nc||[];S.chart=S.chart||{};
- S.announcement=S.announcement||null;S.occasion=S.occasion||null;S.groups=S.groups||[];S.gmsgs=S.gmsgs||[];S.reads=S.reads||{};S.suggestions=S.suggestions||[];S.suggReads=S.suggReads||{};S.complaints=S.complaints||[];S.complaintSeen=S.complaintSeen||{};S.taskReads=S.taskReads||{};S.shiftReceipts=S.shiftReceipts||{};S.ncSeen=S.ncSeen||{};S.formulas=S.formulas||[];S.shiftPhotos=S.shiftPhotos||[];S.devStatus=S.devStatus||{};S.perms=S.perms||{};if(!S.perms.formula)S.perms.formula=["manager"];
+ S.announcement=S.announcement||null;S.occasion=S.occasion||null;S.groups=S.groups||[];S.gmsgs=S.gmsgs||[];S.reads=S.reads||{};S.suggestions=S.suggestions||[];S.suggReads=S.suggReads||{};S.complaints=S.complaints||[];S.complaintSeen=S.complaintSeen||{};S.taskReads=S.taskReads||{};S.shiftReceipts=S.shiftReceipts||{};S.ncSeen=S.ncSeen||{};S.formulas=S.formulas||[];S.shiftPhotos=S.shiftPhotos||[];S.qcTemp=S.qcTemp||[];S.devStatus=S.devStatus||{};S.perms=S.perms||{};if(!S.perms.formula)S.perms.formula=["manager"];
  S.ann=S.ann||[];S.qc=S.qc||[];S.tasks=S.tasks||[];S.shifts=S.shifts||[];
  S.users=(S.users&&S.users.length)?S.users:D0.users;S.perms=S.perms||D0.perms;
  S.perms.qcgram=S.perms.qcgram||["manager","supervisor"];S.perms.train=S.perms.train||["manager","supervisor"];S.perms.group=S.perms.group||["manager","supervisor","senior"];S.perms.complaint=S.perms.complaint||["manager","supervisor"];S.perms.nc=S.perms.nc||["manager","supervisor"];S.perms.ncresponder=S.perms.ncresponder||["supervisor","senior","expert"];S.perms.shiftconfirm=S.perms.shiftconfirm||["manager","supervisor","senior"];
@@ -458,7 +463,7 @@ function pushPlugin(){
 async function registerToken(){try{if(sb&&me&&window.__pushToken)await sb.rpc("register_device",{p_uid:me.id,p_token:window.__pushToken})}catch(e){}}
 function unregisterDevice(){try{if(sb&&window.__pushToken)sb.rpc("unregister_device",{p_token:window.__pushToken}).then(()=>{},()=>{})}catch(e){}}
 function openFromPush(d){try{if(!me||!d||!d.tab)return;window.__openGroup=d.gid?+d.gid:undefined;window.__shiftSub=d.sub||undefined;tab=d.tab;shell()}catch(e){}}
-const QC_BUILD="2026-10-17 11:34 UTC";
+const QC_BUILD="2026-10-17 16:55 UTC";
 function verCard(){
  const c=window.Capacitor;
  if(!c||!c.isNativePlatform||!c.isNativePlatform())return "";
@@ -568,6 +573,15 @@ function occasion(){
 }
 
 function qc(){
+ if(window.__qcSub==="perm")return qcPerm();
+ if(window.__qcSub==="temp")return qcTemp();
+ hubPage("اطلاعات کیفی",[
+  {go:"perm",title:"الزامات کیفی",sub:"الزامات ثابت هر مشتری و محصول",icon:'<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l5 5"/></svg>'},
+  {go:"temp",title:"الزامات موقت (سفارشات)",sub:"الزامات مخصوص هر سفارش",icon:'<svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M9 12h7M9 16h5"/></svg>'}]);
+ document.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>{window.__qcSub=b.dataset.go;window.__qcSel=undefined;window.__qtq="";shell()});
+}
+function qcPerm(){
+ window.__qcSub="perm";
  const term=q.trim();
  const sel=window.__qcSel;
  let sugg=[];
@@ -576,7 +590,7 @@ function qc(){
   S.qc.forEach(r=>{
    if(r.c&&r.c.includes(term))vals.set("c|"+r.c,{type:"c",val:r.c});
    if(r.p&&r.p.includes(term))vals.set("p|"+r.p,{type:"p",val:r.p});
-   if(r.o&&r.o.includes(term))vals.set("o|"+r.o,{type:"o",val:r.o});
+   
   });
   sugg=[...vals.values()].slice(0,10);
  }
@@ -587,9 +601,9 @@ function qc(){
   else hits=S.qc.filter(r=>r.o==sel.val);
  }
  const groups={};hits.forEach(r=>{(groups[r.c]=groups[r.c]||[]).push(r)});
- $("#v").innerHTML=`<div class="card"><h3>جستجو</h3><div class="row"><input id="qs" placeholder="نام مشتری، نام محصول یا شماره سفارش" value="${sel?esc(sel.val):esc(q)}">${can("qc")?`<button class="btn sm" id="qnew" style="flex:0 0 auto">+ ثبت جدید</button>`:""}</div>
+ $("#v").innerHTML=`${backBtn()}<div class="card"><h3>الزامات کیفی</h3><div class="row"><input id="qs" placeholder="جستجو: نام مشتری یا نام محصول" value="${sel?esc(sel.val):esc(q)}">${can("qc")?`<button class="btn sm" id="qnew" style="flex:0 0 auto">+ ثبت جدید</button>`:""}</div>
  ${!sel&&term?(sugg.length?`<div class="card" style="padding:4px">${sugg.map(s=>`<div data-sug="${s.type}|${esc(s.val)}" style="padding:8px 6px;cursor:pointer;border-bottom:1px solid var(--line)">${s.type=="c"?"مشتری":s.type=="p"?"محصول":"سفارش"}: ${esc(s.val)}</div>`).join("")}</div>`:'<p class="meta">موردی پیدا نشد.</p>'):""}
- ${sel?(Object.keys(groups).length?Object.entries(groups).map(([cust,items])=>`<div class="card"><b>${esc(cust)}</b>${items.map((r,i)=>`<div style="margin-top:8px;border-top:1px solid var(--line);padding-top:8px">${i+1}. ${r.p?`<span class="tag">${esc(r.p)}</span> `:""}${r.o?`<span class="tag">سفارش ${esc(r.o)}</span> `:""}${escn(r.t)} ${can("qc")?`<a href="#" data-editqc="${S.qc.indexOf(r)}" style="color:var(--accent,#d91c2e)">ویرایش</a>`:""}</div>`).join("")}</div>`).join(""):'<p class="meta">موردی پیدا نشد.</p>'):(!term?'<p class="meta">برای جستجو، نام مشتری، محصول یا شماره سفارش را بنویسید.</p>':"")}
+ ${sel?(Object.keys(groups).length?Object.entries(groups).map(([cust,items])=>`<div class="card"><b>${esc(cust)}</b>${items.map((r,i)=>`<div style="margin-top:8px;border-top:1px solid var(--line);padding-top:8px">${i+1}. ${r.p?`<span class="tag">${esc(r.p)}</span> `:""}${r.o?`<span class="tag">سفارش ${esc(r.o)}</span> `:""}${escn(r.t)} ${can("qc")?`<a href="#" data-editqc="${S.qc.indexOf(r)}" style="color:var(--accent,#d91c2e)">ویرایش</a>`:""}</div>`).join("")}</div>`).join(""):'<p class="meta">موردی پیدا نشد.</p>'):(!term?'<p class="meta">برای جستجو، نام مشتری یا نام محصول را بنویسید.</p>':"")}
  </div>`;
  const qs=$("#qs");
  qs.oninput=()=>{window.__qcSel=null;q=qs.value;qc();const n=$("#qs");n.focus();n.setSelectionRange(n.value.length,n.value.length)};
@@ -597,9 +611,35 @@ function qc(){
  if(can("qc"))$("#qnew").onclick=()=>openQcModal();
  document.querySelectorAll("[data-editqc]").forEach(a=>a.onclick=(e)=>{e.preventDefault();openQcModal(+a.dataset.editqc)});
 }
+
+function qcTemp(){
+ window.__qcSub="temp";
+ const term=nrm((window.__qtq||"").trim());
+ const list=S.qcTemp.slice().sort((a,b)=>b.at-a.at).filter(r=>!term||nrm(r.order).includes(term)||nrm(r.product).includes(term)||nrm(r.desc).includes(term));
+ $("#v").innerHTML=`${backBtn()}<div class="row" style="align-items:center;flex-wrap:nowrap"><h3 style="flex:1;margin:0;min-width:0">الزامات موقت (سفارشات)</h3>${can("qc")?'<button class="btn sm" id="qtnew" style="flex:0 0 auto;min-width:0">+ ثبت جدید</button>':""}</div>
+ <input id="qtq" placeholder="جستجو: شماره سفارش، محصول یا شرح" value="${esc(window.__qtq||"")}" autocomplete="off" style="margin-top:10px">
+ ${list.length?list.map(r=>`<div class="card"><div class="row" style="align-items:center;flex-wrap:nowrap"><b style="flex:1;min-width:0">سفارش ${esc(r.order)}</b>${r.product?`<span class="tag">${esc(r.product)}</span>`:""}</div><p style="margin:8px 0">${escn(r.desc)}</p><div class="meta">${esc(uname(r.by))} · ${fd(r.at,1)}</div>${can("qc")?`<div class="row" style="flex-wrap:nowrap;margin-top:8px"><button class="btn sm alt" data-qte="${r.id}" style="min-width:0">ویرایش</button><button class="btn sm alt" data-qtd="${r.id}" style="min-width:0">حذف</button></div>`:""}</div>`).join(""):'<p class="meta">'+(term?"موردی پیدا نشد.":"هنوز الزام موقتی ثبت نشده است.")+'</p>'}`;
+ const qi=$("#qtq");
+ qi.oninput=()=>{window.__qtq=qi.value;qcTemp();const n=$("#qtq");n.focus();n.setSelectionRange(n.value.length,n.value.length)};
+ const nb=document.getElementById("qtnew");if(nb)nb.onclick=()=>openQcTempModal(null);
+ document.querySelectorAll("[data-qte]").forEach(b=>b.onclick=()=>openQcTempModal(+b.dataset.qte));
+ document.querySelectorAll("[data-qtd]").forEach(b=>b.onclick=()=>{if(!confirm("این الزام موقت حذف شود؟"))return;S.qcTemp=S.qcTemp.filter(x=>x.id!=+b.dataset.qtd);save("qcTemp");qcTemp()});
+}
+function openQcTempModal(id){
+ const r=id?S.qcTemp.find(x=>x.id==id):null;
+ openModal(`<h3>${r?"ویرایش الزام موقت":"ثبت الزام موقت"}</h3><input id="qto" placeholder="شماره سفارش (الزامی)" autocomplete="off" value="${r?esc(r.order):""}"><input id="qtp" placeholder="نام محصول" autocomplete="off" value="${r?esc(r.product||""):""}"><textarea id="qtd" rows="4" placeholder="شرح (الزامی)">${r?esc(r.desc):""}</textarea><div class="err" id="qte"></div><button class="btn" id="qtb">${r?"ذخیره":"ثبت"}</button>`);
+ $("#qtb").onclick=()=>{
+  const order=$("#qto").value.trim(),product=$("#qtp").value.trim(),desc=$("#qtd").value.trim();
+  if(!order)return $("#qte").textContent="شماره سفارش را بنویسید.";
+  if(!desc)return $("#qte").textContent="شرح را بنویسید.";
+  if(r){r.order=order;r.product=product;r.desc=desc}
+  else S.qcTemp.push({id:nid(),order,product,desc,by:me.id,at:Date.now()});
+  save("qcTemp");closeModal();qcTemp();
+ };
+}
 function openQcModal(editIdx){
  const rec=(editIdx!=null&&editIdx>=0)?S.qc[editIdx]:null;
- openModal(`<h3>${rec?"ویرایش الزام":"ثبت اطلاعات کیفی جدید"}</h3><input id="mfs" placeholder="جستجو یا نوشتن نام مشتری (الزامی)" autocomplete="off" value="${rec?esc(rec.c):""}"><div class="clist" id="mfl" style="display:none"></div><input id="mfp" placeholder="محصول (اختیاری)" value="${rec?esc(rec.p||""):""}"><input id="mfo" placeholder="سفارش (اختیاری)" value="${rec?esc(rec.o||""):""}"><textarea id="mft" rows="3" placeholder="اطلاعات">${rec?esc(rec.t):""}</textarea><div class="err" id="mfe"></div><button class="btn" id="mfb">${rec?"ذخیره":"ثبت"}</button>`);
+ openModal(`<h3>${rec?"ویرایش الزام":"ثبت اطلاعات کیفی جدید"}</h3><input id="mfs" placeholder="جستجو یا نوشتن نام مشتری (الزامی)" autocomplete="off" value="${rec?esc(rec.c):""}"><div class="clist" id="mfl" style="display:none"></div><input id="mfp" placeholder="محصول (اختیاری)" value="${rec?esc(rec.p||""):""}"><textarea id="mft" rows="3" placeholder="اطلاعات">${rec?esc(rec.t):""}</textarea><div class="err" id="mfe"></div><button class="btn" id="mfb">${rec?"ذخیره":"ثبت"}</button>`);
  let confirmedNew=false;
  const inp=$("#mfs"),list=$("#mfl");
  function renderList(){
@@ -616,7 +656,7 @@ function openQcModal(editIdx){
  }
  inp.onfocus=renderList;
  inp.oninput=()=>{confirmedNew=false;renderList()};
- ["mfp","mfo","mft"].forEach(id=>$("#"+id).onfocus=()=>{list.style.display="none"});
+ ["mfp","mft"].forEach(id=>$("#"+id).onfocus=()=>{list.style.display="none"});
  $("#mfb").onclick=()=>{
   const c=inp.value.trim(),t=$("#mft").value.trim(),err=m=>{$("#mfe").textContent=m};
   if(!c)return err("یک مشتری انتخاب کنید یا نام او را بنویسید.");
@@ -626,8 +666,8 @@ function openQcModal(editIdx){
    if(!(confirmedNew||(rec&&rec.c===c))){renderList();return err("این نام در فهرست نیست. از فهرست انتخاب کنید یا «افزودن به‌عنوان مشتری جدید» را بزنید.")}
    S.customers.push(c);
   }
-  if(rec){rec.c=name;rec.p=$("#mfp").value.trim();rec.o=$("#mfo").value.trim();rec.t=t}
-  else S.qc.push({id:nid(),c:name,p:$("#mfp").value.trim(),o:$("#mfo").value.trim(),t,by:me.id,at:Date.now()});
+  if(rec){rec.c=name;rec.p=$("#mfp").value.trim();rec.t=t}
+  else S.qc.push({id:nid(),c:name,p:$("#mfp").value.trim(),t,by:me.id,at:Date.now()});
   save(["qc","customers"]);closeModal();qc();
  };
 }
@@ -944,7 +984,7 @@ async function exportBackup(tag){
  if(ok){try{localStorage.setItem("qclastbackup",obj.exportedAt)}catch(e){}}
  return ok;
 }
-const BK_LABELS={users:"کاربران",qc:"اطلاعات کیفی",tasks:"کارها",shifts:"موارد تحویل شیفت",shiftPhotos:"عکس‌های شیفت",devStatus:"وضعیت دستگاه‌ها",nc:"عدم انطباق‌ها",complaints:"شکایات",suggestions:"انتقادات و پیشنهادات",trainings:"آموزش‌ها",posts:"پست‌های QCgram",groups:"گروه‌های گفتگو",gmsgs:"پیام‌های گفتگو",customers:"مشتری‌ها",formulas:"فرمول‌های تبدیل"};
+const BK_LABELS={users:"کاربران",qc:"اطلاعات کیفی",tasks:"کارها",shifts:"موارد تحویل شیفت",shiftPhotos:"عکس‌های شیفت",devStatus:"وضعیت دستگاه‌ها",nc:"عدم انطباق‌ها",complaints:"شکایات",suggestions:"انتقادات و پیشنهادات",trainings:"آموزش‌ها",posts:"پست‌های QCgram",groups:"گروه‌های گفتگو",gmsgs:"پیام‌های گفتگو",customers:"مشتری‌ها",formulas:"فرمول‌های تبدیل",qcTemp:"الزامات موقت"};
 function renderAdminBackup(BK){
  let last="";try{const t=localStorage.getItem("qclastbackup");if(t)last=fd(Date.parse(t),1)}catch(e){}
  $("#v").innerHTML=`${BK}<div class="card"><h3>نسخه‌ی پشتیبان</h3>
@@ -973,7 +1013,7 @@ function renderAdminBackup(BK){
    if($("#bksafe").checked){const ok=await exportBackup("before-restore");if(!ok){go.disabled=false;go.textContent="بازیابی";$("#bkerr2").textContent="پشتیبان‌گیری از وضعیت فعلی انجام نشد؛ بازیابی متوقف شد.";return}}
    const keys=KEYS.filter(k=>obj.data[k]!==undefined);
    keys.forEach(k=>{S[k]=obj.data[k]});
-   ["customers","posts","msgs","trainings","nc","ann","qc","tasks","shifts","groups","gmsgs","suggestions","complaints","formulas","shiftPhotos"].forEach(k=>{S[k]=S[k]||[]});
+   ["customers","posts","msgs","trainings","nc","ann","qc","tasks","shifts","groups","gmsgs","suggestions","complaints","formulas","shiftPhotos","qcTemp"].forEach(k=>{S[k]=S[k]||[]});
    ["reads","suggReads","complaintSeen","taskReads","shiftReceipts","ncSeen","devStatus","chart"].forEach(k=>{S[k]=S[k]||{}});
    S.perms=S.perms||{};if(!S.perms.formula)S.perms.formula=["manager"];
    save(keys);closeModal();
@@ -1326,7 +1366,7 @@ function groupChat(gid){
   <div class="meta" id="greplybox" style="display:none;margin:6px 0"></div>
  <div class="chatbar">
  <button class="btn sm" id="gsend" style="flex:0 0 auto;border-radius:99px;width:36px;height:36px;padding:0">➤</button>
- <input id="gtxt" placeholder="پیام...">
+ <textarea id="gtxt" rows="1" placeholder="پیام..." enterkeyhint="enter"></textarea>
  <label style="cursor:pointer;padding:4px">📎<input type="file" id="gimg" accept="image/*" style="display:none"></label>
  <label style="cursor:pointer;padding:4px">📷<input type="file" id="gcam" accept="image/*" capture="environment" style="display:none"></label>
  </div>
@@ -1347,7 +1387,12 @@ function groupChat(gid){
   $("#greplybox").style.display="block";$("#greplybox").innerHTML=`در پاسخ به ${esc(uname(rm.from))}: ${esc((rm.text||"تصویر").slice(0,40))} <a href="#" id="gcancelreply">✕</a>`;
   document.getElementById("gcancelreply").onclick=(ev)=>{ev.preventDefault();replyTo=null;$("#greplybox").style.display="none"};
   $("#gtxt").focus();}
- function startEdit(m){editingId=m.id;$("#gtxt").value=m.text||"";
+ function autoGrow(){
+  const el=document.getElementById("gtxt");if(!el)return;
+  const cs=getComputedStyle(el);const lh=parseFloat(cs.lineHeight)||24;const maxH=lh*4+parseFloat(cs.paddingTop)+parseFloat(cs.paddingBottom)+4;
+  el.style.height="auto";el.style.height=Math.min(el.scrollHeight+2,maxH)+"px";el.style.overflowY=el.scrollHeight+2>maxH?"auto":"hidden";
+ }
+ function startEdit(m){editingId=m.id;$("#gtxt").value=m.text||"";autoGrow();
   $("#greplybox").style.display="block";$("#greplybox").innerHTML=`در حال ویرایش پیام <a href="#" id="gcanceledit">✕</a>`;
   document.getElementById("gcanceledit").onclick=(ev)=>{ev.preventDefault();editingId=null;$("#gtxt").value="";$("#greplybox").style.display="none"};
   $("#gtxt").focus();}
@@ -1440,6 +1485,7 @@ function groupChat(gid){
   };
 const memberNames=g.members.filter(id=>id!=me.id).map(id=>uname(id));
  $("#gtxt").oninput=()=>{
+  autoGrow();
   const v=$("#gtxt").value;
   const mm=v.match(/@([^\s@]*)$/);
   const sug=$("#gsug");
@@ -1454,7 +1500,7 @@ const memberNames=g.members.filter(id=>id!=me.id).map(id=>uname(id));
    sug.style.display="none";sug.innerHTML="";$("#gtxt").focus();
   });
  };
- $("#gtxt").onkeydown=(e)=>{if(e.key=="Enter"){e.preventDefault();doSend()}};
+ 
  async function doSend(image){
   if(editingId){const t=$("#gtxt").value.trim();if(!t)return;const m=M(editingId);m.text=t;m.edited=true;editingId=null;$("#greplybox").style.display="none";save("gmsgs");groupChat(gid);return}
   const t=$("#gtxt").value.trim();if(!t&&!image)return;
@@ -1655,7 +1701,7 @@ function ncReport(){
 
 /* ---- keep the data fresh: polling + resume + realtime ---- */
 const TABKEYS={home:["announcement","occasion","posts","tasks","taskReads","nc","ncSeen","complaints","complaintSeen","suggestions","suggReads","gmsgs","groups","reads","shifts","shiftReceipts"],
- qc:["qc","customers"],tasks:["tasks","taskReads"],shift:["shifts","shiftReceipts","shiftPhotos","devStatus"],train:["trainings"],
+ qc:["qc","customers","qcTemp"],tasks:["tasks","taskReads"],shift:["shifts","shiftReceipts","shiftPhotos","devStatus"],train:["trainings"],
  nc:["nc","ncSeen"],ncc:["nc","ncSeen","complaints","complaintSeen"],complaints:["complaints","complaintSeen"],suggestions:["suggestions","suggReads"],
  tools:["formulas"],qcgram:["posts"],announce:["announcement"],occasion:["occasion"],admin:["announcement","occasion","posts"],profile:[],colleague:["groups","gmsgs","reads"]};
 function applyRemote(rows){
@@ -1957,7 +2003,7 @@ function formulaModal(id){
 
 /* ---- back button: always one level UP in the app structure ---- */
 (function(){
- const FLAGS=["__shiftSub","__toolSub","__openNc","__openPost","__adminSub","__adminHomeSub","__openTask","__openGroup","__openComplaint","__editUser","__editPost","__qcSel"];
+ const FLAGS=["__qcSub","__shiftSub","__toolSub","__openNc","__openPost","__adminSub","__adminHomeSub","__openTask","__openGroup","__openComplaint","__editUser","__editPost","__qcSel"];
  function clearAll(){FLAGS.forEach(k=>{window[k]=undefined})}
  window.resetNav=clearAll;
  window.appBack=function(){
@@ -1977,7 +2023,7 @@ function formulaModal(id){
    case "tasks":if(W.__openTask){W.__openTask=undefined;return go("tasks")}clearAll();return go("home");
    case "qcgram":if(W.__openPost){W.__openPost=undefined;W.__piIdx=0;return go("qcgram")}clearAll();return go("home");
    case "colleague":if(W.__openGroup){W.__openGroup=undefined;W.__gWasNearBottom=undefined;return go("colleague")}clearAll();return go("home");
-   case "qc":if(W.__qcSel){W.__qcSel=undefined;return go("qc")}clearAll();return go("home");
+   case "qc":if(W.__qcSel){W.__qcSel=undefined;return go("qc")}if(W.__qcSub){W.__qcSub=undefined;return go("qc")}clearAll();return go("home");
    case "admin":
     if(W.__adminSub==="home"&&W.__adminHomeSub){W.__adminHomeSub=undefined;W.__editPost=undefined;return go("admin")}
     if(W.__adminSub){W.__adminSub=undefined;W.__adminHomeSub=undefined;W.__editUser=undefined;W.__editPost=undefined;return go("admin")}
