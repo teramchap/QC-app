@@ -312,12 +312,99 @@ const KEYS=["users","customers","perms","ann","qc","tasks","shifts","msgs","post
 const SUPABASE_URL="https://rmowptvcexryfaagdyzo.supabase.co";
 const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJtb3dwdHZjZXhyeWZhYWdkeXpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA4MTk0MjAsImV4cCI6MjEwNjM5NTQyMH0.LCVWMxOh04g5xlXiffS52Cydsfn9nEHsj344PjYQImY";
 let sb=null,DBSTATE="nodb";
-const save=(keys,quiet)=>{
- const ks=keys?(Array.isArray(keys)?keys:[keys]):KEYS;
+/* ---- safe saving: merge with the server copy instead of overwriting it ---- */
+const stableStr=v=>JSON.stringify(v,(k,x)=>x&&typeof x==="object"&&!Array.isArray(x)?Object.keys(x).sort().reduce((o,kk)=>(o[kk]=x[kk],o),{}):x);
+const deq=(a,b)=>stableStr(a)===stableStr(b);
+const cloneV=v=>v===undefined?undefined:JSON.parse(JSON.stringify(v));
+const isObj=v=>v&&typeof v==="object"&&!Array.isArray(v);
+const itemId=x=>isObj(x)?(x.id!==undefined?x.id:x.n):undefined;
+function merge3(b,l,r){
+ if(deq(l,b))return cloneV(r);
+ if(deq(r,b))return cloneV(l);
+ if(deq(l,r))return cloneV(l);
+ if(Array.isArray(l)&&Array.isArray(r)){
+  const ba=Array.isArray(b)?b:[];
+  const all=[...ba,...l,...r];
+  if(all.length&&all.every(x=>itemId(x)!==undefined)){
+   const mk=a=>{const m=new Map();a.forEach(x=>m.set(String(itemId(x)),x));return m};
+   const bm=mk(ba),lm=mk(l),rm=mk(r),out=[];
+   r.forEach(x=>{const id=String(itemId(x));
+    if(bm.has(id)&&!lm.has(id))return;
+    if(lm.has(id))out.push(merge3(bm.get(id),lm.get(id),x));else out.push(cloneV(x));
+   });
+   l.forEach(x=>{const id=String(itemId(x));if(!rm.has(id)&&!bm.has(id))out.push(cloneV(x))});
+   if(out.length&&out.every(x=>typeof x.at==="number"))out.sort((p,q)=>p.at-q.at);
+   return out;
+  }
+  const bs=new Set(ba.map(stableStr)),ls=new Set(l.map(stableStr)),rs=new Set(r.map(stableStr));
+  const out=r.filter(x=>!(bs.has(stableStr(x))&&!ls.has(stableStr(x)))).map(cloneV);
+  l.forEach(x=>{if(!bs.has(stableStr(x))&&!rs.has(stableStr(x)))out.push(cloneV(x))});
+  return out;
+ }
+ if(isObj(l)&&isObj(r)){
+  const bb=isObj(b)?b:{};const out={};
+  new Set([...Object.keys(bb),...Object.keys(l),...Object.keys(r)]).forEach(k=>{const v=merge3(bb[k],l[k],r[k]);if(v!==undefined)out[k]=v});
+  return out;
+ }
+ return cloneV(l);
+}
+const pendingKeys=new Set(),inflightKeys=new Set(),saveQ={};
+let failToastAt=0;
+function loadPending(){try{return JSON.parse(localStorage.getItem("qcpend")||"{}")}catch(e){return {}}}
+function storePending(){try{const o={};pendingKeys.forEach(k=>{o[k]=(window.__base&&window.__base[k]!==undefined)?window.__base[k]:null});if(pendingKeys.size)localStorage.setItem("qcpend",JSON.stringify(o));else localStorage.removeItem("qcpend")}catch(e){}}
+async function persistKey(k,force){
+ inflightKeys.add(k);
+ try{
+  window.__base=window.__base||{};window.__ver=window.__ver||{};
+  for(let i=0;i<6;i++){
+   const snap=cloneV(S[k]);const ts=new Date().toISOString();
+   if(force){
+    const {error}=await sb.from("app_state").upsert({key:k,value:snap,updated_at:ts},{onConflict:"key"});
+    if(error)throw error;
+    window.__base[k]=cloneV(snap);window.__ver[k]=Date.parse(ts);return true;
+   }
+   const cur=await sb.from("app_state").select("value,updated_at").eq("key",k).maybeSingle();
+   if(cur.error)throw cur.error;
+   if(!cur.data){
+    const ins=await sb.from("app_state").insert({key:k,value:snap,updated_at:ts});
+    if(!ins.error){window.__base[k]=cloneV(snap);window.__ver[k]=Date.parse(ts);return true}
+    if(ins.error.code==="23505")continue;
+    throw ins.error;
+   }
+   const base=window.__base[k];
+   const merged=(base===undefined||cur.data.value===null)?snap:merge3(base,snap,cur.data.value);
+   const up=await sb.from("app_state").update({value:merged,updated_at:ts}).eq("key",k).eq("updated_at",cur.data.updated_at).select("key");
+   if(up.error)throw up.error;
+   if(up.data&&up.data.length){
+    window.__base[k]=cloneV(merged);window.__ver[k]=Date.parse(ts);
+    const cur2=S[k],next=merge3(snap,cur2,merged);
+    if(!deq(next,cur2)){S[k]=next;try{localStorage.setItem("qcdb",JSON.stringify(S))}catch(e){}if(me&&typeof afterRemote==="function")afterRemote([k])}
+    return true;
+   }
+  }
+  throw new Error("conflict");
+ }finally{inflightKeys.delete(k)}
+}
+function queueSave(k,force,done){
+ saveQ[k]=(saveQ[k]||Promise.resolve()).then(()=>persistKey(k,force)).then(()=>{
+  pendingKeys.delete(k);storePending();DBSTATE="ok";done&&done(true);
+ },(e)=>{
+  pendingKeys.add(k);storePending();DBSTATE="error";done&&done(false);
+  if(Date.now()-failToastAt>15000){failToastAt=Date.now();toast("ارتباط با سرور برقرار نیست؛ تغییرات بعداً خودکار ذخیره می‌شود")}
+ });
+}
+function retryPending(){if(!sb)return;pendingKeys.forEach(k=>{if(!inflightKeys.has(k))queueSave(k,false)})}
+const save=(keys,quiet,force)=>{
+ const ks=(keys?(Array.isArray(keys)?keys:[keys]):KEYS).filter(k=>S[k]!==undefined);
  if(me&&ks.includes("users")){const idx=S.users.findIndex(u=>u.id==me.id);if(idx>-1)S.users[idx]=me}
  try{localStorage.setItem("qcdb",JSON.stringify(S))}catch(e){}
- if(sb)ks.forEach(async k=>{try{const ts=new Date().toISOString();window.__ver=window.__ver||{};window.__ver[k]=Date.parse(ts);const {error}=await sb.from("app_state").upsert({key:k,value:S[k],updated_at:ts},{onConflict:"key"});if(error)DBSTATE="error"}catch(e){DBSTATE="error"}});
- if(!quiet)toast("ذخیره شد");
+ if(!sb){if(!quiet)toast("ذخیره شد");return}
+ let left=ks.length,okAll=true;
+ ks.forEach(k=>{
+  pendingKeys.add(k);
+  queueSave(k,force,ok=>{okAll=okAll&&ok;left--;if(left===0&&okAll&&!quiet)toast("ذخیره شد")});
+ });
+ storePending();
 };
 function removeStored(url){
  try{
@@ -360,8 +447,14 @@ async function uploadImage(f,opts){
 async function loadFromDb(){
  const {data,error}=await sb.from("app_state").select("key,value,updated_at");
  if(error){DBSTATE="error";return}
- (data||[]).forEach(row=>{if(row.value!==undefined&&row.value!==null)S[row.key]=row.value});
- window.__ver={};(data||[]).forEach(r=>{window.__ver[r.key]=Date.parse(r.updated_at)});
+ const pend=loadPending();window.__base={};window.__ver={};
+ (data||[]).forEach(row=>{
+  if(row.value===undefined||row.value===null)return;
+  window.__base[row.key]=cloneV(row.value);window.__ver[row.key]=Date.parse(row.updated_at);
+  if(pend[row.key]!==undefined&&pend[row.key]!==null&&S[row.key]!==undefined){S[row.key]=merge3(pend[row.key],S[row.key],row.value);pendingKeys.add(row.key)}
+  else S[row.key]=row.value;
+ });
+ Object.keys(pend).forEach(k=>{if(S[k]!==undefined)pendingKeys.add(k)});
  S.customers=S.customers||[];S.posts=S.posts||[];S.msgs=S.msgs||[];S.trainings=S.trainings||[];S.nc=S.nc||[];S.chart=S.chart||{};
  S.announcement=S.announcement||null;S.occasion=S.occasion||null;S.groups=S.groups||[];S.gmsgs=S.gmsgs||[];S.reads=S.reads||{};S.suggestions=S.suggestions||[];S.suggReads=S.suggReads||{};S.complaints=S.complaints||[];S.complaintSeen=S.complaintSeen||{};S.taskReads=S.taskReads||{};S.shiftReceipts=S.shiftReceipts||{};S.ncSeen=S.ncSeen||{};S.formulas=S.formulas||[];S.shiftPhotos=S.shiftPhotos||[];S.qcTemp=S.qcTemp||[];S.devStatus=S.devStatus||{};S.perms=S.perms||{};if(!S.perms.formula)S.perms.formula=["manager"];
  S.ann=S.ann||[];S.qc=S.qc||[];S.tasks=S.tasks||[];S.shifts=S.shifts||[];
@@ -375,6 +468,7 @@ async function loadFromDb(){
   applyRemote([{key:row.key,value:row.value,ts:Date.parse(row.updated_at)}]);
  }).subscribe();
  startSync();
+ if(pendingKeys.size)setTimeout(retryPending,500);
 }
 function setTheme(mode){
  document.documentElement.setAttribute("data-theme",mode);
@@ -463,7 +557,7 @@ function pushPlugin(){
 async function registerToken(){try{if(sb&&me&&window.__pushToken)await sb.rpc("register_device",{p_uid:me.id,p_token:window.__pushToken})}catch(e){}}
 function unregisterDevice(){try{if(sb&&window.__pushToken)sb.rpc("unregister_device",{p_token:window.__pushToken}).then(()=>{},()=>{})}catch(e){}}
 function openFromPush(d){try{if(!me||!d||!d.tab)return;window.__openGroup=d.gid?+d.gid:undefined;window.__shiftSub=d.sub||undefined;tab=d.tab;shell()}catch(e){}}
-const QC_BUILD="2026-10-17 16:55 UTC";
+const QC_BUILD="2026-10-18 11:40 UTC";
 function verCard(){
  const c=window.Capacitor;
  if(!c||!c.isNativePlatform||!c.isNativePlatform())return "";
@@ -1016,7 +1110,7 @@ function renderAdminBackup(BK){
    ["customers","posts","msgs","trainings","nc","ann","qc","tasks","shifts","groups","gmsgs","suggestions","complaints","formulas","shiftPhotos","qcTemp"].forEach(k=>{S[k]=S[k]||[]});
    ["reads","suggReads","complaintSeen","taskReads","shiftReceipts","ncSeen","devStatus","chart"].forEach(k=>{S[k]=S[k]||{}});
    S.perms=S.perms||{};if(!S.perms.formula)S.perms.formula=["manager"];
-   save(keys);closeModal();
+   save(keys,false,true);closeModal();
    const f2=S.users.find(u=>u.id==me.id);
    if(!f2||!f2.on){alert("نسخه‌ی بازیابی‌شده کاربر فعلی شما را ندارد؛ دوباره وارد شوید.");me=null;try{localStorage.removeItem("qcuid")}catch(e){}login();return}
    me=f2;window.__adminSub="backup";shell();
@@ -1706,15 +1800,22 @@ const TABKEYS={home:["announcement","occasion","posts","tasks","taskReads","nc",
  tools:["formulas"],qcgram:["posts"],announce:["announcement"],occasion:["occasion"],admin:["announcement","occasion","posts"],profile:[],colleague:["groups","gmsgs","reads"]};
 function applyRemote(rows){
  const changed=[];
- window.__ver=window.__ver||{};
+ window.__ver=window.__ver||{};window.__base=window.__base||{};
  rows.forEach(r=>{
   if(r.value===null||r.value===undefined)return;
   if(r.ts)window.__ver[r.key]=r.ts;
-  if(JSON.stringify(S[r.key])!==JSON.stringify(r.value)){S[r.key]=r.value;changed.push(r.key)}
+  const loc=S[r.key],base=window.__base[r.key];
+  let next=r.value;
+  if(base!==undefined&&loc!==undefined&&!deq(loc,base))next=merge3(base,loc,r.value);
+  window.__base[r.key]=cloneV(r.value);
+  if(!deq(loc,next)){S[r.key]=next;changed.push(r.key)}
  });
  if(!changed.length)return;
  try{localStorage.setItem("qcdb",JSON.stringify(S))}catch(e){}
- if(!me)return;
+ afterRemote(changed);
+}
+function afterRemote(changed){
+ if(!me||!changed.length)return;
  if(changed.includes("users")){const f=S.users.find(u=>u.id==me.id);if(f)me=f}
  const inChat=tab==="colleague"&&window.__openGroup;
  if(inChat&&changed.includes("gmsgs")&&window.__gRefresh)window.__gRefresh();
@@ -1755,10 +1856,10 @@ async function syncNow(){
 }
 function startSync(){
  if(window.__syncOn)return;window.__syncOn=true;
- setInterval(()=>{if(!document.hidden){syncNow();flushRender()}},5000);
+ setInterval(()=>{if(!document.hidden){retryPending();syncNow();flushRender()}},5000);
  document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(syncNow,150)});
  window.addEventListener("focus",()=>setTimeout(syncNow,150));
- window.addEventListener("online",()=>setTimeout(syncNow,300));
+ window.addEventListener("online",()=>setTimeout(()=>{retryPending();syncNow()},300));
  try{
   const c=window.Capacitor;
   if(c&&c.isNativePlatform&&c.isNativePlatform()){
@@ -2044,4 +2145,4 @@ function formulaModal(id){
 boot();
 </script>
 </body>
- </html>
+</html>
