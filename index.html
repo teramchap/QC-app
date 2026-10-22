@@ -282,6 +282,8 @@ body.kb .gdown{bottom:80px}
 .chatbar textarea{flex:1;min-width:0;margin:0;resize:none;line-height:1.6;padding:9px 14px;border-radius:20px;overflow-y:hidden;max-height:140px}
 .chatbar>*{margin-bottom:2px}
 .chatbar textarea{margin-bottom:0}
+#updbar{position:fixed;top:0;left:0;right:0;z-index:95;background:var(--accent);color:#fff;text-align:center;padding:10px 12px;padding-top:calc(10px + env(safe-area-inset-top,0px));font-weight:700;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.3)}
+.btime{opacity:.75}
 </style>
 </head>
 <body>
@@ -377,6 +379,7 @@ async function persistKey(k,force){
    if(up.error)throw up.error;
    if(up.data&&up.data.length){
     window.__base[k]=cloneV(merged);window.__ver[k]=Date.parse(ts);
+    if(k==="gmsgs"&&window.__gRefresh)setTimeout(()=>window.__gRefresh(true),0);
     const cur2=S[k],next=merge3(snap,cur2,merged);
     if(!deq(next,cur2)){S[k]=next;try{localStorage.setItem("qcdb",JSON.stringify(S))}catch(e){}if(me&&typeof afterRemote==="function")afterRemote([k])}
     return true;
@@ -449,8 +452,10 @@ async function loadFromDb(){
  if(error){DBSTATE="error";return}
  const pend=loadPending();window.__base={};window.__ver={};
  (data||[]).forEach(row=>{
-  if(row.value===undefined||row.value===null)return;
-  window.__base[row.key]=cloneV(row.value);window.__ver[row.key]=Date.parse(row.updated_at);
+  if(row.value===undefined)return;
+  window.__ver[row.key]=Date.parse(row.updated_at);
+  if(row.value===null){if(row.key==="announcement"||row.key==="occasion")S[row.key]=null;return}
+  window.__base[row.key]=cloneV(row.value);
   if(pend[row.key]!==undefined&&pend[row.key]!==null&&S[row.key]!==undefined){S[row.key]=merge3(pend[row.key],S[row.key],row.value);pendingKeys.add(row.key)}
   else S[row.key]=row.value;
  });
@@ -557,12 +562,11 @@ function pushPlugin(){
 async function registerToken(){try{if(sb&&me&&window.__pushToken)await sb.rpc("register_device",{p_uid:me.id,p_token:window.__pushToken})}catch(e){}}
 function unregisterDevice(){try{if(sb&&window.__pushToken)sb.rpc("unregister_device",{p_token:window.__pushToken}).then(()=>{},()=>{})}catch(e){}}
 function openFromPush(d){try{if(!me||!d||!d.tab)return;window.__openGroup=d.gid?+d.gid:undefined;window.__shiftSub=d.sub||undefined;tab=d.tab;shell()}catch(e){}}
-const QC_BUILD="2026-10-18 11:40 UTC";
+const QC_BUILD="2026-10-20 11:47 UTC";
 function verCard(){
- const c=window.Capacitor;
- if(!c||!c.isNativePlatform||!c.isNativePlatform())return "";
+ const c=window.Capacitor;const native=!!(c&&c.isNativePlatform&&c.isNativePlatform());
  const host=location.host||"";
- const src=host==="localhost"?"داخل APK (نسخه‌ی همراه برنامه)":"آدرس اینترنتی: "+host;
+ const src=native?(host==="localhost"?"داخل APK (نسخه‌ی همراه برنامه)":"آدرس اینترنتی: "+host):"مرورگر: "+(host||"فایل محلی");
  return `<div class="card"><h3>درباره‌ی برنامه</h3><p class="meta" style="line-height:2">نسخه‌ی صفحه: ${QC_BUILD}<br>منبع بارگذاری: ${esc(src)}</p></div>`;
 }
 function pushSet(st){try{localStorage.setItem("qcpushstate",st)}catch(e){}}
@@ -1441,7 +1445,7 @@ function groupChat(gid){
    ${m.image?`<img class="chimg" src="${m.image}" loading="lazy" style="width:200px;height:200px;object-fit:cover;border-radius:8px;margin-bottom:3px;display:block;cursor:pointer">`:""}
    ${m.text?`<div class="btext">${hl(m.text,q)}${m.edited?' <span style="opacity:.6;font-size:10px">(ویرایش‌شده)</span>':""}</div>`:""}
    <div class="reacts" data-rx="${m.id}">${reactsHtml(m)}</div>
-   <div class="btime">${fd(m.at,1).split(" ").slice(-1)[0]}</div>
+   <div class="btime">${fd(m.at,1).split(" ").slice(-1)[0]}${mine&&sb&&window.__base&&window.__base.gmsgs?(window.__base.gmsgs.some(x=>x.id==m.id)?" ✓":" 🕓"):""}</div>
    </div>`;
    return `${chip}<div class="msgrow ${mine?"me":"other"}" data-msgid="${m.id}">
    ${mine?avatar(m.from)+bubble:bubble+avatar(m.from)}
@@ -1562,10 +1566,10 @@ function groupChat(gid){
   $("#gdsearch").onclick=(e)=>{e.stopPropagation();dm.style.display="none";openSearch()};
   $("#gqx").onclick=closeSearch;
   window.__gcloseSearch=closeSearch;
-  window.__gRefresh=()=>{
+  window.__gRefresh=(force)=>{
    const sbr=document.getElementById("gsearch");if(!sbr||sbr.style.display!=="none")return;
    const fresh=S.gmsgs.filter(m=>m.groupId==gid).sort((a,b)=>a.at-b.at);
-   if(fresh.length===msgs.length&&JSON.stringify(fresh)===JSON.stringify(msgs))return;
+   if(!force&&fresh.length===msgs.length&&JSON.stringify(fresh)===JSON.stringify(msgs))return;
    const near=(box.scrollHeight-box.scrollTop-box.clientHeight<120);
    msgs=fresh;renderBox(fresh,"");
    if(near)box.scrollTop=box.scrollHeight;
@@ -1802,8 +1806,9 @@ function applyRemote(rows){
  const changed=[];
  window.__ver=window.__ver||{};window.__base=window.__base||{};
  rows.forEach(r=>{
-  if(r.value===null||r.value===undefined)return;
+  if(r.value===undefined)return;
   if(r.ts)window.__ver[r.key]=r.ts;
+  if(r.value===null&&r.key!=="announcement"&&r.key!=="occasion")return;
   const loc=S[r.key],base=window.__base[r.key];
   let next=r.value;
   if(base!==undefined&&loc!==undefined&&!deq(loc,base))next=merge3(base,loc,r.value);
@@ -2092,6 +2097,33 @@ function formulaModal(id){
   save("formulas");closeModal();units();
  };
 }
+
+/* ---- tell the user when a newer version of the page has been published ---- */
+(function(){
+ if(location.protocol==="file:"||location.hostname==="localhost")return;
+ let checking=false;
+ const safe=()=>{const ae=document.activeElement;return !document.getElementById("modalbg")&&!document.getElementById("imgviewer")&&!(ae&&(ae.tagName==="TEXTAREA"||ae.tagName==="INPUT"||ae.tagName==="SELECT"))};
+ function banner(){
+  if(document.getElementById("updbar"))return;
+  const d=document.createElement("div");d.id="updbar";
+  d.innerHTML="نسخه‌ی جدید برنامه آماده است. برای به‌روزرسانی اینجا را لمس کنید ⟳";
+  d.onclick=()=>location.reload();
+  document.body.appendChild(d);
+ }
+ async function checkVersion(){
+  if(checking||document.hidden)return;checking=true;
+  try{
+   const r=await fetch(location.pathname+"?_v="+Date.now(),{cache:"no-store"});
+   if(!r.ok)return;
+   const m=/QC_BUILD\s*=\s*"([^"]+)"/.exec(await r.text());
+   if(m&&m[1]!==QC_BUILD){banner();if(tab==="home"&&me&&safe())setTimeout(()=>{if(safe())location.reload()},4000)}
+  }catch(e){}finally{checking=false}
+ }
+ window.__checkVersion=checkVersion;
+ setInterval(checkVersion,180000);
+ document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(checkVersion,800)});
+ setTimeout(checkVersion,6000);
+})();
 
 /* ---- hide the bottom bar while the keyboard is open ---- */
 (function(){
