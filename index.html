@@ -374,7 +374,10 @@ async function persistKey(k,force){
     throw ins.error;
    }
    const base=window.__base[k];
-   const merged=(base===undefined||cur.data.value===null)?snap:merge3(base,snap,cur.data.value);
+   let merged;
+if(cur.data.value===null)merged=snap;
+else if(base===undefined)merged=merge3(Array.isArray(snap)?[]:{},snap,cur.data.value);
+else merged=merge3(base,snap,cur.data.value);
    const up=await sb.from("app_state").update({value:merged,updated_at:ts}).eq("key",k).eq("updated_at",cur.data.updated_at).select("key");
    if(up.error)throw up.error;
    if(up.data&&up.data.length){
@@ -449,14 +452,14 @@ async function uploadImage(f,opts){
 }
 async function loadFromDb(){
  const {data,error}=await sb.from("app_state").select("key,value,updated_at");
- if(error){DBSTATE="error";return}
+ if(error){DBSTATE="error";setTimeout(()=>{if(DBSTATE==="error")loadFromDb().catch(()=>{})},8000);return}
  const pend=loadPending();window.__base={};window.__ver={};
  (data||[]).forEach(row=>{
   if(row.value===undefined)return;
   window.__ver[row.key]=Date.parse(row.updated_at);
   if(row.value===null){if(row.key==="announcement"||row.key==="occasion")S[row.key]=null;return}
   window.__base[row.key]=cloneV(row.value);
-  if(pend[row.key]!==undefined&&pend[row.key]!==null&&S[row.key]!==undefined){S[row.key]=merge3(pend[row.key],S[row.key],row.value);pendingKeys.add(row.key)}
+  if(pend[row.key]!==undefined&&S[row.key]!==undefined){const pb=pend[row.key]===null?(Array.isArray(row.value)?[]:{}):pend[row.key];S[row.key]=merge3(pb,S[row.key],row.value);pendingKeys.add(row.key)}
   else S[row.key]=row.value;
  });
  Object.keys(pend).forEach(k=>{if(S[k]!==undefined)pendingKeys.add(k)});
@@ -466,6 +469,7 @@ async function loadFromDb(){
  S.users=(S.users&&S.users.length)?S.users:D0.users;S.perms=S.perms||D0.perms;
  S.perms.qcgram=S.perms.qcgram||["manager","supervisor"];S.perms.train=S.perms.train||["manager","supervisor"];S.perms.group=S.perms.group||["manager","supervisor","senior"];S.perms.complaint=S.perms.complaint||["manager","supervisor"];S.perms.nc=S.perms.nc||["manager","supervisor"];S.perms.ncresponder=S.perms.ncresponder||["supervisor","senior","expert"];S.perms.shiftconfirm=S.perms.shiftconfirm||["manager","supervisor","senior"];
  DBSTATE="ok";
+ if(me){window.__pendingRender=true;flushRender()}
  sb.channel("app_state_changes").on("postgres_changes",{event:"*",schema:"public",table:"app_state"},payload=>{
   const row=payload.new;
   if(!row||!row.key)return;
