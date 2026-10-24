@@ -393,7 +393,6 @@ async function persistKey(k,force){
  }finally{inflightKeys.delete(k)}
 }
 function queueSave(k,force,done){
- if(k==="gmsgs"){pendingKeys.delete(k);storePending();saveChat();return}
  saveQ[k]=(saveQ[k]||Promise.resolve()).then(()=>persistKey(k,force)).then(()=>{
   pendingKeys.delete(k);storePending();DBSTATE="ok";done&&done(true);
  },(e)=>{
@@ -403,8 +402,7 @@ function queueSave(k,force,done){
 }
 function retryPending(){if(!sb)return;pendingKeys.forEach(k=>{if(!inflightKeys.has(k))queueSave(k,false)})}
 const save=(keys,quiet,force)=>{
- let ks=(keys?(Array.isArray(keys)?keys:[keys]):KEYS).filter(k=>S[k]!==undefined);
- if(ks.includes("gmsgs")){ks=ks.filter(k=>k!=="gmsgs");saveChat()}
+ const ks=(keys?(Array.isArray(keys)?keys:[keys]):KEYS).filter(k=>S[k]!==undefined);
  if(me&&ks.includes("users")){const idx=S.users.findIndex(u=>u.id==me.id);if(idx>-1)S.users[idx]=me}
  try{localStorage.setItem("qcdb",JSON.stringify(S))}catch(e){}
  if(!sb){if(!quiet)toast("ذخیره شد");return}
@@ -454,7 +452,7 @@ async function uploadImage(f,opts){
  return await fileToDataURL(f);
 }
 async function loadFromDb(){
- const {data,error}=await sb.from("app_state").select("key,value,updated_at").neq("key","gmsgs");
+ const {data,error}=await sb.from("app_state").select("key,value,updated_at");
  if(error){DBSTATE="error";setTimeout(()=>{if(DBSTATE==="error")loadFromDb().catch(()=>{})},8000);return}
  const pend=loadPending();window.__base={};window.__ver={};
  (data||[]).forEach(row=>{
@@ -473,10 +471,9 @@ async function loadFromDb(){
  S.perms.qcgram=S.perms.qcgram||["manager","supervisor"];S.perms.train=S.perms.train||["manager","supervisor"];S.perms.group=S.perms.group||["manager","supervisor","senior"];S.perms.complaint=S.perms.complaint||["manager","supervisor"];S.perms.nc=S.perms.nc||["manager","supervisor"];S.perms.ncresponder=S.perms.ncresponder||["supervisor","senior","expert"];S.perms.shiftconfirm=S.perms.shiftconfirm||["manager","supervisor","senior"];
  DBSTATE="ok";
  if(me){window.__pendingRender=true;flushRender()}
- await loadChat();
  sb.channel("app_state_changes").on("postgres_changes",{event:"*",schema:"public",table:"app_state"},payload=>{
   const row=payload.new;
-  if(!row||!row.key||row.key==="gmsgs")return;
+  if(!row||!row.key)return;
   if(row.value===undefined){syncNow();return}
   applyRemote([{key:row.key,value:row.value,ts:Date.parse(row.updated_at)}]);
  }).subscribe();
@@ -571,7 +568,7 @@ function pushPlugin(){
 async function registerToken(){try{if(sb&&me&&window.__pushToken)await sb.rpc("register_device",{p_uid:me.id,p_token:window.__pushToken})}catch(e){}}
 function unregisterDevice(){try{if(sb&&window.__pushToken)sb.rpc("unregister_device",{p_token:window.__pushToken}).then(()=>{},()=>{})}catch(e){}}
 function openFromPush(d){try{if(!me||!d||!d.tab)return;window.__openGroup=d.gid?+d.gid:undefined;window.__shiftSub=d.sub||undefined;tab=d.tab;shell()}catch(e){}}
-const QC_BUILD="2026-10-24 14:00 UTC";
+const QC_BUILD="2026-10-24 12:00 UTC";
 function verCard(){
  const c=window.Capacitor;const native=!!(c&&c.isNativePlatform&&c.isNativePlatform());
  const host=location.host||"";
@@ -1560,7 +1557,7 @@ function groupChat(gid){
    ${m.image?`<img class="chimg" src="${m.image}" loading="lazy" style="width:200px;height:200px;object-fit:cover;border-radius:8px;margin-bottom:3px;display:block;cursor:pointer">`:""}
    ${m.text?`<div class="btext">${hl(m.text,q)}${m.edited?' <span style="opacity:.6;font-size:10px">(ویرایش‌شده)</span>':""}</div>`:""}
    <div class="reacts" data-rx="${m.id}">${reactsHtml(m)}</div>
-   <div class="btime">${fd(m.at,1).split(" ").slice(-1)[0]}${mine&&sb&&window.__chatSnap?(window.__chatSnap[m.id]!==undefined?" ✓":" 🕓"):""}</div>
+   <div class="btime">${fd(m.at,1).split(" ").slice(-1)[0]}${mine&&sb&&window.__base&&window.__base.gmsgs?(window.__base.gmsgs.some(x=>x.id==m.id)?" ✓":" 🕓"):""}</div>
    </div>`;
    return `${chip}<div class="msgrow ${mine?"me":"other"}" data-msgid="${m.id}">
    ${mine?avatar(m.from)+bubble:bubble+avatar(m.from)}
@@ -1964,8 +1961,7 @@ async function syncNow(){
  if(!sb||!me||syncBusy)return;
  syncBusy=true;
  try{
-  syncChat();
-  const head=await sb.from("app_state").select("key,updated_at").neq("key","gmsgs");
+  const head=await sb.from("app_state").select("key,updated_at");
   if(head.error||!head.data)return;
   window.__ver=window.__ver||{};
   const stale=head.data.filter(r=>!(window.__ver[r.key]>=Date.parse(r.updated_at))).map(r=>r.key);
@@ -2294,98 +2290,6 @@ function formulaModal(id){
   addEventListener("popstate",()=>{if(window.appBack())history.pushState({g:1},"");else history.back()});
  }
 })();
-
-/* ---------- گفتگو: هر پیام یک ردیف جدا ---------- */
-window.__chatReady=false;window.__chatSnap=null;window.__chatLast=0;
-const CHAT_COLS="id,group_id,sender,body,image,parent,reacts,edited,deleted,at,upd";
-const m2r=m=>({id:m.id,group_id:m.groupId,sender:m.from,body:m.text||"",image:m.image||null,parent:m.parent||null,reacts:m.reacts||{},edited:!!m.edited,at:m.at});
-const r2m=r=>({id:r.id,groupId:r.group_id,from:r.sender,text:r.body||"",image:r.image||null,parent:r.parent||null,reacts:r.reacts||{},edited:!!r.edited,at:r.at});
-const msgSig=m=>JSON.stringify([m.groupId,m.from,m.text||"",m.image||null,m.parent||null,Object.keys(m.reacts||{}).sort().map(k=>[k,m.reacts[k]]),!!m.edited,m.at]);
-let chatBusy=false,chatSaving=false,chatAgain=false;
-async function loadChat(){
- try{
-  if(!sb)return;
-  const {data,error}=await sb.from("chat_messages").select(CHAT_COLS).eq("deleted",false).order("at",{ascending:false}).limit(2000);
-  if(error)throw error;
-  const rows=data.slice().reverse();
-  S.gmsgs=rows.map(r2m);
-  window.__chatSnap={};
-  S.gmsgs.forEach(m=>{window.__chatSnap[m.id]=msgSig(m)});
-  window.__chatLast=rows.reduce((a,r)=>Math.max(a,r.upd||0),0);
-  window.__chatReady=true;
-  setupChatRealtime();
-  try{localStorage.setItem("qcdb",JSON.stringify(S))}catch(e){}
-  if(me)afterRemote(["gmsgs"]);
- }catch(e){window.__chatReady=false}
-}
-async function syncChat(){
- if(!sb||chatBusy)return;
- if(!window.__chatReady){return loadChat()}
- saveChat();
- chatBusy=true;
- try{
-  const since=Math.max(0,window.__chatLast-5000);
-  const {data,error}=await sb.from("chat_messages").select(CHAT_COLS).gt("upd",since).order("upd",{ascending:true}).limit(500);
-  if(error||!data)return;
-  const snap=window.__chatSnap;let changed=false;
-  data.forEach(r=>{
-   window.__chatLast=Math.max(window.__chatLast,r.upd||0);
-   const i=S.gmsgs.findIndex(x=>x.id==r.id);
-   if(r.deleted){if(i>-1){S.gmsgs.splice(i,1);changed=true}delete snap[r.id];return}
-   const m=r2m(r),sig=msgSig(m);
-   if(i<0){
-    if(snap[r.id]!==undefined)return;
-    S.gmsgs.push(m);changed=true;
-   }else if(msgSig(S.gmsgs[i])!==sig){
-    if(snap[r.id]!==undefined&&msgSig(S.gmsgs[i])!==snap[r.id])return;
-    S.gmsgs[i]=m;changed=true;
-   }
-   snap[r.id]=sig;
-  });
-  if(changed){
-   S.gmsgs.sort((a,b)=>a.at-b.at);
-   try{localStorage.setItem("qcdb",JSON.stringify(S))}catch(e){}
-   if(me)afterRemote(["gmsgs"]);
-  }
-  if(data.length>=500)setTimeout(syncChat,100);
- }catch(e){}finally{chatBusy=false}
-}
-async function saveChat(){
- if(!sb||!window.__chatReady)return;
- if(chatSaving){chatAgain=true;return}
- chatSaving=true;
- try{
-  do{
-   chatAgain=false;
-   const snap=window.__chatSnap;
-   const ups=[],dels=[];
-   S.gmsgs.forEach(m=>{const sig=msgSig(m);if(snap[m.id]!==sig)ups.push([m,sig])});
-   const present=new Set(S.gmsgs.map(m=>String(m.id)));
-   Object.keys(snap).forEach(id=>{if(!present.has(id))dels.push(id)});
-   if(ups.length){
-    const {error}=await sb.from("chat_messages").upsert(ups.map(u=>m2r(u[0])),{onConflict:"id"});
-    if(error)throw error;
-    ups.forEach(u=>{snap[u[0].id]=u[1]});
-   }
-   if(dels.length){
-    const {error}=await sb.from("chat_messages").update({deleted:true}).in("id",dels.map(Number));
-    if(error)throw error;
-    dels.forEach(id=>{delete snap[id]});
-   }
-  }while(chatAgain);
-  DBSTATE="ok";
-  if(window.__gRefresh)setTimeout(()=>window.__gRefresh(true),0);
- }catch(e){
-  DBSTATE="error";
-  if(Date.now()-failToastAt>15000){failToastAt=Date.now();toast("ارتباط با سرور برقرار نیست؛ پیام بعداً خودکار ارسال می‌شود")}
-  setTimeout(saveChat,6000);
- }finally{chatSaving=false}
-}
-function setupChatRealtime(){
- if(window.__chatRt||!sb)return;window.__chatRt=true;
- try{sb.channel("chat_changes").on("postgres_changes",{event:"*",schema:"public",table:"chat_messages"},()=>syncChat()).subscribe()}catch(e){}
-}
-setInterval(()=>{if(!document.hidden&&me&&tab==="colleague"&&window.__openGroup)syncChat()},2500);
 
 boot();
 </script>
