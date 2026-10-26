@@ -571,7 +571,7 @@ function pushPlugin(){
 async function registerToken(){try{if(sb&&me&&window.__pushToken)await sb.rpc("register_device",{p_uid:me.id,p_token:window.__pushToken})}catch(e){}}
 function unregisterDevice(){try{if(sb&&window.__pushToken)sb.rpc("unregister_device",{p_token:window.__pushToken}).then(()=>{},()=>{})}catch(e){}}
 function openFromPush(d){try{if(!me||!d||!d.tab)return;window.__openGroup=d.gid?+d.gid:undefined;window.__shiftSub=d.sub||undefined;tab=d.tab;shell()}catch(e){}}
-const QC_BUILD="2026-10-24 16:00 UTC";
+const QC_BUILD="2026-10-24 18:00 UTC";
 function verCard(){
  const c=window.Capacitor;const native=!!(c&&c.isNativePlatform&&c.isNativePlatform());
  const host=location.host||"";
@@ -1742,19 +1742,73 @@ function train(){
  if(can("train"))$("#trnew").onclick=()=>openTrainModal();
  document.querySelectorAll("[data-op]").forEach(b=>b.onclick=()=>{const t=S.trainings.find(x=>x.id==b.dataset.op);if(!t)return;
   const media=t.image?(t.kind=="pdf"?`<p><a href="${t.image}" target="_blank" class="tag">📄 مشاهده فایل پی‌دی‌اف</a></p>`:`<img src="${t.image}" style="width:100%;border-radius:8px;margin-bottom:8px">`):"";
-  openModal(`<h3>${esc(t.title)}</h3>${media}<p>${escn(t.text)}</p><div class="meta">${esc(uname(t.by))} · ${fd(t.at,1)}</div>${can("train")?'<div class="row" style="margin-top:12px;flex-wrap:nowrap"><button class="btn sm alt" id="tr_edit" style="min-width:0">ویرایش</button><button class="btn sm alt" id="tr_del" style="min-width:0">حذف</button></div>':""}`);
+  openModal(`<h3>${esc(t.title)}</h3>${media}<div>${trainBody(t)}</div><div class="meta">${esc(uname(t.by))} · ${fd(t.at,1)}</div>${can("train")?'<div class="row" style="margin-top:12px;flex-wrap:nowrap"><button class="btn sm alt" id="tr_edit" style="min-width:0">ویرایش</button><button class="btn sm alt" id="tr_del" style="min-width:0">حذف</button></div>':""}`);
   if(can("train")){
    $("#tr_edit").onclick=()=>openTrainModal(t.id);
    $("#tr_del").onclick=()=>{if(!confirm("این مطلب آموزشی حذف شود؟"))return;S.trainings=S.trainings.filter(x=>x.id!=t.id);removeStored(t.image);save("trainings");closeModal();train()};
   }});
 }
+function trainBody(t){
+ const imgs=t.imgs||[],txt=t.text||"",re=/\[\[عکس (\d+)\]\]/g;
+ let out="",last=0,m;
+ while((m=re.exec(txt))){
+  out+=escn(txt.slice(last,m.index));
+  const im=imgs.find(x=>x.n==+m[1]);
+  if(im)out+=`<img data-timg="1" onclick="viewTrainImg(this)" src="${im.url}" alt="" loading="lazy" style="width:100%;border-radius:8px;margin:8px 0;display:block;cursor:pointer">`;
+  last=m.index+m[0].length;
+ }
+ return out+escn(txt.slice(last));
+}
+function viewTrainImg(el){
+ const box=el.closest(".modalbox");if(!box)return;
+ const all=[...box.querySelectorAll("img[data-timg]")];
+ openMediaViewer(all.map(i=>({url:i.src})),all.indexOf(el));
+}
 function openTrainModal(id){
  const t=id?S.trainings.find(x=>x.id==id):null;
- openModal(`<h3>${t?"ویرایش مطلب آموزشی":"مطلب آموزشی جدید"}</h3><input id="mtrt" placeholder="عنوان" value="${t?esc(t.title):""}"><textarea id="mtrx" rows="5" placeholder="متن آموزشی">${t?esc(t.text):""}</textarea>
- ${t&&t.image?`<p class="meta" style="margin:0 0 6px">${t.kind=="pdf"?"این مطلب فایل پی‌دی‌اف دارد.":"این مطلب تصویر دارد."} برای تغییر، فایل تازه انتخاب کنید.</p><label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:13px"><input type="checkbox" id="mtrdel" style="width:auto;margin:0"> حذف فایل فعلی</label>`:""}
+ let imgs=t&&t.imgs?t.imgs.map(x=>({n:x.n,url:x.url})):[];
+ const orig=imgs.map(x=>x.url),added=[];
+ openModal(`<h3>${t?"ویرایش مطلب آموزشی":"مطلب آموزشی جدید"}</h3><input id="mtrt" placeholder="عنوان" value="${t?esc(t.title):""}"><textarea id="mtrx" rows="8" placeholder="متن آموزشی">${t?esc(t.text):""}</textarea>
+ <div class="row" style="flex-wrap:nowrap;align-items:center;margin-bottom:6px"><label class="btn sm alt" style="min-width:0;cursor:pointer;margin:0;flex:0 0 auto">🖼 افزودن عکس در محل مکان‌نما<input type="file" id="mtrinl" accept="image/*" multiple style="display:none"></label><span class="meta" id="mtrinlst" style="min-width:0"></span></div>
+ <div id="mtrth" class="pimgs"></div>
+ <p class="meta" style="margin:0 0 10px">مکان‌نما را داخل متن، همان جایی که می‌خواهید عکس بیاید بگذارید و دکمه‌ی بالا را بزنید. برای جابه‌جا کردن عکس، نوشته‌ی <b>[[عکس ۱]]</b> مانند را ببرید (Cut) و جای دیگر بچسبانید.</p>
+ ${t&&t.image?`<p class="meta" style="margin:0 0 6px">${t.kind=="pdf"?"این مطلب فایل پی‌دی‌اف دارد.":"این مطلب عکس اصلی دارد."} برای تغییر، فایل تازه انتخاب کنید.</p><label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:13px"><input type="checkbox" id="mtrdel" style="width:auto;margin:0"> حذف فایل اصلی فعلی</label>`:""}
+ <p class="meta" style="margin:0 0 4px">عکس یا پی‌دی‌اف اصلی (اختیاری، بالای متن نمایش داده می‌شود):</p>
  <input type="file" id="mtri" accept="image/*,application/pdf,.pdf"><div class="err" id="mtre"></div><button class="btn sm" id="mtrb">${t?"ذخیره‌ی تغییرات":"ثبت"}</button>`);
+ const ta=document.getElementById("mtrx"),th=document.getElementById("mtrth"),st=document.getElementById("mtrinlst");
+ let pos=ta.value.length;
+ const upd=()=>{pos=ta.selectionStart};
+ ["click","keyup","input","select","blur"].forEach(ev=>ta.addEventListener(ev,upd));
+ function renderThumbs(){
+  th.innerHTML=imgs.map(x=>`<div class="pimg"><img src="${x.url}" alt=""><button type="button" class="pdelimg" data-rmi="${x.n}" aria-label="حذف عکس">✕</button><span style="position:absolute;bottom:4px;right:4px;background:rgba(0,0,0,.65);color:#fff;border-radius:6px;font-size:11px;padding:0 6px">عکس ${x.n}</span></div>`).join("");
+  th.querySelectorAll("[data-rmi]").forEach(b=>b.onclick=()=>{
+   const n=+b.dataset.rmi;
+   imgs=imgs.filter(x=>x.n!==n);
+   ta.value=ta.value.split("[[عکس "+n+"]]").join("");
+   renderThumbs();
+  });
+ }
+ renderThumbs();
+ document.getElementById("mtrinl").onchange=async(e)=>{
+  const files=[...e.target.files];if(!files.length)return;
+  st.textContent="در حال آپلود…";
+  try{
+   for(const f of files){
+    const url=await uploadImage(f,{compress:true});
+    const n=imgs.reduce((a,x)=>Math.max(a,x.n),0)+1;
+    imgs.push({n,url});added.push(url);
+    const tok="\n[[عکس "+n+"]]\n";
+    const v=ta.value;
+    ta.value=v.slice(0,pos)+tok+v.slice(pos);
+    pos+=tok.length;
+   }
+   st.textContent="";
+  }catch(err){st.textContent="آپلود ناموفق بود"}
+  e.target.value="";
+  renderThumbs();
+ };
  $("#mtrb").onclick=async()=>{
-  const ti=$("#mtrt").value.trim(),tx=$("#mtrx").value.trim();
+  const ti=$("#mtrt").value.trim(),tx=ta.value.trim();
   if(!ti||!tx)return $("#mtre").textContent="عنوان و متن را وارد کنید.";
   const f=$("#mtri").files[0];
   let image=t?t.image:null,kind=t?t.kind:"image";
@@ -1763,8 +1817,11 @@ function openTrainModal(id){
    if(t&&t.image&&t.image!==up)removeStored(t.image);
    image=up;kind=(f.type=="application/pdf"||f.name.toLowerCase().endsWith(".pdf"))?"pdf":"image";
   }else if(t&&$("#mtrdel")&&$("#mtrdel").checked){removeStored(t.image);image=null;kind="image"}
-  if(t){t.title=ti;t.text=tx;t.image=image;t.kind=kind}
-  else S.trainings.push({id:nid(),title:ti,text:tx,image,kind,by:me.id,at:Date.now()});
+  const used=imgs.filter(x=>tx.includes("[[عکس "+x.n+"]]"));
+  const keep=new Set(used.map(x=>x.url));
+  [...orig,...added].forEach(u=>{if(!keep.has(u))removeStored(u)});
+  if(t){t.title=ti;t.text=tx;t.image=image;t.kind=kind;t.imgs=used}
+  else S.trainings.push({id:nid(),title:ti,text:tx,image,kind,imgs:used,by:me.id,at:Date.now()});
   save("trainings");closeModal();train();
  };
 }
