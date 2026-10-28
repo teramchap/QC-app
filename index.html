@@ -88,11 +88,11 @@ body.no-bgimg{background-image:none!important;background-color:var(--bg)}
 .igdots{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);display:flex;gap:4px}
 .igdots span{width:6px;height:6px;border-radius:99px;background:rgba(255,255,255,.5)}
 .igdots span.on{background:#fff}
-.bookgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;padding-left:12px}
+.bookgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;padding-left:12px}
 .bookcard{position:relative;background:var(--accent);border-radius:12px;aspect-ratio:3/4;cursor:pointer;display:flex;align-items:flex-start;justify-content:center;box-shadow:2px 3px 6px rgba(0,0,0,.3);padding:12px 8px}
 .bookcard::before{content:"";position:absolute;left:-8px;top:10px;bottom:10px;width:14px;background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="14" height="24"><rect x="3" y="3" width="8" height="18" rx="4" fill="%23607d8b"/><circle cx="7" cy="12" r="3" fill="white"/></svg>');background-repeat:repeat-y;filter:drop-shadow(1px 1px 1px rgba(0,0,0,.3))}
 .bicon{display:none}
-.btitle{background:#fff;color:#333;font-size:11.5px;font-weight:700;text-align:center;padding:12px 6px;border-radius:6px;width:75%;margin-top:10px}
+.btitle{background:#fff;color:#333;font-size:11.5px;font-weight:700;text-align:center;padding:12px 6px;border-radius:6px;width:80%;margin-top:10px;line-height:1.7;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden}
 
 /* ---- preview-matching overrides ---- */
 input,select,textarea,.login input{background:var(--input)}
@@ -571,7 +571,7 @@ function pushPlugin(){
 async function registerToken(){try{if(sb&&me&&window.__pushToken)await sb.rpc("register_device",{p_uid:me.id,p_token:window.__pushToken})}catch(e){}}
 function unregisterDevice(){try{if(sb&&window.__pushToken)sb.rpc("unregister_device",{p_token:window.__pushToken}).then(()=>{},()=>{})}catch(e){}}
 function openFromPush(d){try{if(!me||!d||!d.tab)return;window.__openGroup=d.gid?+d.gid:undefined;window.__shiftSub=d.sub||undefined;tab=d.tab;shell()}catch(e){}}
-const QC_BUILD="2026-10-25 08:00 UTC";
+const QC_BUILD="2026-10-28 22:00 UTC";
 function verCard(){
  const c=window.Capacitor;const native=!!(c&&c.isNativePlatform&&c.isNativePlatform());
  const host=location.host||"";
