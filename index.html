@@ -571,7 +571,7 @@ function pushPlugin(){
 async function registerToken(){try{if(sb&&me&&window.__pushToken)await sb.rpc("register_device",{p_uid:me.id,p_token:window.__pushToken})}catch(e){}}
 function unregisterDevice(){try{if(sb&&window.__pushToken)sb.rpc("unregister_device",{p_token:window.__pushToken}).then(()=>{},()=>{})}catch(e){}}
 function openFromPush(d){try{if(!me||!d||!d.tab)return;window.__openGroup=d.gid?+d.gid:undefined;window.__shiftSub=d.sub||undefined;tab=d.tab;shell()}catch(e){}}
-const QC_BUILD="2026-10-24 22:00 UTC";
+const QC_BUILD="2026-10-25 08:00 UTC";
 function verCard(){
  const c=window.Capacitor;const native=!!(c&&c.isNativePlatform&&c.isNativePlatform());
  const host=location.host||"";
@@ -672,12 +672,13 @@ function occasion(){
  <div style="display:flex;gap:8px;align-items:center;padding:10px 12px">${avatar(oc.by)}<b>${esc(uname(oc.by))}</b><span class="meta">${fd(oc.at,1)}</span></div>
  ${oc.image?`<div class="igframe"><img src="${oc.image}"></div>`:""}
  <div style="padding:10px 12px">
- <button type="button" class="likebtn ${liked?"on":""}" id="oclike" aria-label="لایک">${HEART_SVG}</button> <span class="meta">${(oc.likes||[]).length} لایک</span>
+ <button type="button" class="likebtn ${liked?"on":""}" id="oclike" aria-label="لایک">${HEART_SVG}</button> <a href="#" id="oclikers" class="meta" style="color:inherit">${(oc.likes||[]).length} لایک</a>
  <p>${escn(oc.caption)}</p>
  ${(oc.comments||[]).map(c=>`<div style="margin-top:8px;display:flex;gap:8px">${avatar(c.by)}<div><b style="font-size:13px">${esc(uname(c.by))}</b><div style="font-size:13px">${escn(c.text)}</div><div class="meta">${fd(c.at,1)}</div></div></div>`).join("")}
  <div class="row" style="margin-top:10px"><input id="occm" placeholder="نظر شما..."><button class="btn sm" id="occb">ارسال</button></div>
  </div></div>`;
  $("#oclike").onclick=()=>{oc.likes=oc.likes||[];const i=oc.likes.indexOf(me.id);if(i>-1)oc.likes.splice(i,1);else oc.likes.push(me.id);save("occasion");occasion()};
+ $("#oclikers").onclick=(e)=>{e.preventDefault();const ids=(oc.likes||[]);openModal(`<h3>پسندیده‌شده توسط</h3>${ids.length?ids.map(uid=>`<div style="padding:7px 0;display:flex;align-items:center;gap:8px">${avatar(uid)}<span>${esc(uname(uid))}</span></div>`).join(""):'<p class="meta">هنوز کسی لایک نکرده است.</p>'}`)};
  $("#occb").onclick=()=>{const t=$("#occm").value.trim();if(!t)return;oc.comments=oc.comments||[];oc.comments.push({id:nid(),by:me.id,text:t,at:Date.now()});save("occasion");occasion()};
 }
 
