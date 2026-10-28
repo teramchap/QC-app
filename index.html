@@ -571,7 +571,7 @@ function pushPlugin(){
 async function registerToken(){try{if(sb&&me&&window.__pushToken)await sb.rpc("register_device",{p_uid:me.id,p_token:window.__pushToken})}catch(e){}}
 function unregisterDevice(){try{if(sb&&window.__pushToken)sb.rpc("unregister_device",{p_token:window.__pushToken}).then(()=>{},()=>{})}catch(e){}}
 function openFromPush(d){try{if(!me||!d||!d.tab)return;window.__openGroup=d.gid?+d.gid:undefined;window.__shiftSub=d.sub||undefined;tab=d.tab;shell()}catch(e){}}
-const QC_BUILD="2026-10-24 18:00 UTC";
+const QC_BUILD="2026-10-24 20:00 UTC";
 function verCard(){
  const c=window.Capacitor;const native=!!(c&&c.isNativePlatform&&c.isNativePlatform());
  const host=location.host||"";
@@ -644,7 +644,7 @@ function closeModal(){const b=document.getElementById("modalbg");if(b)b.remove()
 function home(){
  const la=S.announcement;
  const oc=S.occasion;
- const lp=S.posts[S.posts.length-1];
+ const lp=postsOrdered()[0];
  $("#v").innerHTML=`<div class="menugrid">${TABS().map(t=>{const bn=t[0]=="suggestions"?suggUnread():t[0]=="ncc"?ncNewCount()+complaintsUnseen():0;
  const ribbon=t[0]=="tasks"&&tasksNewCount()>0?'<span class="ribbon">جدید</span>':"";
  return `<button data-t="${t[0]}">${ribbon}<span class="ic">${t[2]}</span>${t[1]}${bn?`<span style="position:absolute;top:2px;left:2px;background:#d91c2e;color:#fff;font-size:9px;min-width:15px;height:15px;border-radius:99px;display:flex;align-items:center;justify-content:center;padding:0 3px">${bn}</span>`:""}</button>`}).join("")}</div>
@@ -1310,20 +1310,33 @@ function renderAdminOcc(BK2){
   const image=await uploadImage(f);
   S.occasion={image,caption:cap,by:me.id,at:Date.now(),likes:[],comments:[]};notify("all","مناسبت جدید",cap||"مناسبت جدید ثبت شد",{tab:"occasion"});save("occasion");renderAdminOcc(BK2)};
 }
+function postKey(p){return p.ord!==undefined?p.ord:p.at}
+function postsOrdered(){return S.posts.slice().sort((a,b)=>postKey(b)-postKey(a))}
+function movePost(id,dir,BK2){
+ const asc=S.posts.slice().sort((a,b)=>postKey(a)-postKey(b));
+ const i=asc.findIndex(p=>p.id==id);
+ const j=dir==="up"?i+1:i-1;
+ if(i<0||j<0||j>=asc.length)return;
+ const ka=postKey(asc[i]),kb=postKey(asc[j]);
+ if(ka===kb){asc[i].ord=kb+(dir==="up"?1:-1)}
+ else{asc[i].ord=kb;asc[j].ord=ka}
+ save("posts");renderAdminGram(BK2);
+}
 function renderAdminGram(BK2){
  $("#v").innerHTML=`${BK2}<div class="card"><h3>پست جدید QCgram</h3><input type="file" id="gi" accept="image/*" multiple><textarea id="gc" rows="2" placeholder="کپشن"></textarea><div class="err" id="ge"></div><button class="btn sm" id="gb">انتشار</button></div>
- <div class="card"><h3>پست‌های منتشرشده</h3>${S.posts.length?S.posts.slice().reverse().map(p=>{const ed=window.__editPost==p.id;return `<div class="card">
+ <div class="card"><h3>پست‌های منتشرشده</h3>${S.posts.length?postsOrdered().map((p,pi,pa)=>{const ed=window.__editPost==p.id;return `<div class="card">
  ${ed?`<div class="pimgs">${p.images.map((u,i)=>`<div class="pimg"><img src="${u}" alt="" onerror="this.classList.add('bad')"><button type="button" class="pdelimg" data-delimg="${p.id}:${i}" aria-label="حذف عکس">✕</button></div>`).join("")}</div>
   <div class="row" style="flex-wrap:nowrap;align-items:center;margin-bottom:6px"><input type="file" accept="image/*" multiple data-addfile="${p.id}" style="margin-bottom:0;min-width:0"><button class="btn sm" data-addimg="${p.id}" style="flex:0 0 auto;min-width:0">افزودن</button></div><div class="err" data-aerr="${p.id}"></div>`
   :`${p.images[0]?`<img src="${p.images[0]}" alt="" onerror="this.style.display='none'" style="width:100%;max-height:140px;object-fit:cover;border-radius:8px;margin-bottom:6px">`:""}${p.images.length>1?`<div class="meta" style="margin-bottom:4px">${p.images.length} عکس</div>`:""}`}
  ${ed?`<textarea data-ecap="${p.id}" rows="2">${esc(p.caption)}</textarea><button class="btn sm" data-esave="${p.id}">ذخیره</button>`:`<p>${escn(p.caption)}</p>`}
- <button class="btn sm alt" data-pedit="${p.id}">${ed?"انصراف":"ویرایش"}</button> <button class="btn sm alt" data-pdel="${p.id}">حذف</button>
+ <button class="btn sm alt" data-pmv="${p.id}:up" ${pi==0?"disabled":""}>▲ جلوتر</button> <button class="btn sm alt" data-pmv="${p.id}:down" ${pi==pa.length-1?"disabled":""}>▼ عقب‌تر</button> <button class="btn sm alt" data-pedit="${p.id}">${ed?"انصراف":"ویرایش"}</button> <button class="btn sm alt" data-pdel="${p.id}">حذف</button>
  </div>`}).join(""):'<p class="meta">هنوز پستی نیست.</p>'}</div>`;
  $("#abk2").onclick=()=>{window.__adminHomeSub=null;admin()};
  $("#gb").onclick=async()=>{const files=[...$("#gi").files].slice(0,10);const cap=$("#gc").value.trim();
   if(!files.length)return $("#ge").textContent="حداقل یک تصویر انتخاب کنید.";
   const images=await Promise.all(files.map(f=>uploadImage(f,{compress:true})));
   S.posts.push({id:nid(),by:me.id,at:Date.now(),images,caption:cap,comments:[],likes:[]});notify("all","QCgram",(cap||"پست جدید")+"",{tab:"qcgram"});save("posts");renderAdminGram(BK2)};
+ document.querySelectorAll("[data-pmv]").forEach(b=>b.onclick=()=>{const [pid,dir]=b.dataset.pmv.split(":");movePost(+pid,dir,BK2)});
  document.querySelectorAll("[data-pedit]").forEach(b=>b.onclick=()=>{const id=+b.dataset.pedit;window.__editPost=window.__editPost==id?null:id;renderAdminGram(BK2)});
  document.querySelectorAll("[data-esave]").forEach(b=>b.onclick=()=>{const id=+b.dataset.esave;const p=S.posts.find(x=>x.id==id);p.caption=document.querySelector(`[data-ecap="${id}"]`).value.trim();window.__editPost=null;save("posts");renderAdminGram(BK2)});
  document.querySelectorAll("[data-pdel]").forEach(b=>b.onclick=()=>{if(!confirm("حذف این پست؟"))return;const gone=S.posts.find(x=>x.id==+b.dataset.pdel);S.posts=S.posts.filter(x=>x.id!=+b.dataset.pdel);if(gone)(gone.images||[]).forEach(removeStored);save("posts");renderAdminGram(BK2)});
@@ -1399,7 +1412,7 @@ function profile(){
 function qcgram(){
  const openId=window.__openPost;
  if(openId)return qcgramPost(openId);
- $("#v").innerHTML=S.posts.length?`<div class="igrid">${S.posts.slice().reverse().map(p=>`<div class="igcell" data-op="${p.id}"><img src="${p.images[0]}"></div>`).join("")}</div>`:'<p class="meta">هنوز پستی منتشر نشده است.</p>';
+ $("#v").innerHTML=S.posts.length?`<div class="igrid">${postsOrdered().map(p=>`<div class="igcell" data-op="${p.id}"><img src="${p.images[0]}"></div>`).join("")}</div>`:'<p class="meta">هنوز پستی منتشر نشده است.</p>';
  document.querySelectorAll("[data-op]").forEach(c=>c.onclick=()=>{window.__openPost=+c.dataset.op;window.__piIdx=0;qcgram()});
 }
 function renderOneComment(c,isReply){
