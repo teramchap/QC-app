@@ -293,7 +293,7 @@ window.onerror=function(msg,src,line){try{alert("یک خطا رخ داد (لطف
 function toast(msg){
  try{
   let t=document.getElementById("toastbox");
-  if(!t){t=document.createElement("div");t.id="toastbox";t.style.cssText="pointer-events:none;position:fixed;left:50%;bottom:70px;transform:translateX(-50%);background:var(--accent);color:#ffffff;padding:10px 18px;border-radius:99px;font-size:13px;z-index:50;box-shadow:0 2px 10px rgba(0,0,0,.25);transition:opacity .3s";document.body.appendChild(t)}
+  if(!t){t=document.createElement("div");t.id="toastbox";t.style.cssText="pointer-events:none;position:fixed;left:50%;bottom:70px;transform:translateX(-50%);background:var(--accent);color:#ffffff;padding:10px 18px;border-radius:99px;font-size:13px;z-index:200;box-shadow:0 2px 10px rgba(0,0,0,.25);transition:opacity .3s";document.body.appendChild(t)}
   t.textContent=msg;t.style.opacity="1";
   clearTimeout(window.__toastT);window.__toastT=setTimeout(()=>{t.style.opacity="0"},1600);
  }catch(e){}
@@ -571,7 +571,7 @@ function pushPlugin(){
 async function registerToken(){try{if(sb&&me&&window.__pushToken)await sb.rpc("register_device",{p_uid:me.id,p_token:window.__pushToken})}catch(e){}}
 function unregisterDevice(){try{if(sb&&window.__pushToken)sb.rpc("unregister_device",{p_token:window.__pushToken}).then(()=>{},()=>{})}catch(e){}}
 function openFromPush(d){try{if(!me||!d||!d.tab)return;window.__openGroup=d.gid?+d.gid:undefined;window.__shiftSub=d.sub||undefined;tab=d.tab;shell()}catch(e){}}
-const QC_BUILD="2026-10-29 12:00 UTC";
+const QC_BUILD="2026-10-29 16:00 UTC";
 function verCard(){
  const c=window.Capacitor;const native=!!(c&&c.isNativePlatform&&c.isNativePlatform());
  const host=location.host||"";
@@ -2118,7 +2118,7 @@ async function saveImageFile(url){
  try{
   const c=window.Capacitor,native=!!(c&&c.isNativePlatform&&c.isNativePlatform());
   const has=n=>c&&c.isPluginAvailable&&c.isPluginAvailable(n);
-  if(native&&!(has("Filesystem")&&has("Share"))){toast("برای ذخیره‌ی عکس باید نسخه‌ی جدید APK نصب شود");return}
+  if(native&&!(has("Filesystem")&&has("Share"))){alert("برای ذخیره‌ی عکس باید نسخه‌ی جدید APK نصب شود");return}
   const r=await fetch(url);const b=await r.blob();
   const ext=((b.type||"image/jpeg").split("/")[1]||"jpg").replace("jpeg","jpg");
   const name="qc-"+Date.now()+"."+ext;
@@ -2130,11 +2130,12 @@ async function saveImageFile(url){
    return;
   }
   const f=new File([b],name,{type:b.type});
-  if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f]});return}
+  /* در مرورگر مستقیم دانلود می‌شود */
   const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();
   setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},2000);
  }catch(e){
   if(e&&(e.name==="AbortError"||/cancel/i.test(String(e.message||e))))return;
+  if(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform()){alert("ذخیره‌ی عکس ناموفق بود: "+String((e&&e.message)||e).slice(0,150));return}
   try{window.open(url,"_blank")}catch(x){toast("ذخیره‌ی عکس ناموفق بود")}
  }
 }
