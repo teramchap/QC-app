@@ -88,11 +88,11 @@ body.no-bgimg{background-image:none!important;background-color:var(--bg)}
 .igdots{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);display:flex;gap:4px}
 .igdots span{width:6px;height:6px;border-radius:99px;background:rgba(255,255,255,.5)}
 .igdots span.on{background:#fff}
-.bookgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;padding-left:12px}
+.bookgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;padding-left:12px}
 .bookcard{position:relative;background:var(--accent);border-radius:12px;aspect-ratio:3/4;cursor:pointer;display:flex;align-items:flex-start;justify-content:center;box-shadow:2px 3px 6px rgba(0,0,0,.3);padding:12px 8px}
 .bookcard::before{content:"";position:absolute;left:-8px;top:10px;bottom:10px;width:14px;background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="14" height="24"><rect x="3" y="3" width="8" height="18" rx="4" fill="%23607d8b"/><circle cx="7" cy="12" r="3" fill="white"/></svg>');background-repeat:repeat-y;filter:drop-shadow(1px 1px 1px rgba(0,0,0,.3))}
 .bicon{display:none}
-.btitle{background:#fff;color:#333;font-size:11.5px;font-weight:700;text-align:center;padding:12px 6px;border-radius:6px;width:80%;margin-top:10px;line-height:1.7;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden}
+.btitle{background:#fff;color:#333;font-size:11.5px;font-weight:700;text-align:center;padding:12px 6px;border-radius:6px;width:75%;margin-top:10px}
 
 /* ---- preview-matching overrides ---- */
 input,select,textarea,.login input{background:var(--input)}
@@ -571,7 +571,7 @@ function pushPlugin(){
 async function registerToken(){try{if(sb&&me&&window.__pushToken)await sb.rpc("register_device",{p_uid:me.id,p_token:window.__pushToken})}catch(e){}}
 function unregisterDevice(){try{if(sb&&window.__pushToken)sb.rpc("unregister_device",{p_token:window.__pushToken}).then(()=>{},()=>{})}catch(e){}}
 function openFromPush(d){try{if(!me||!d||!d.tab)return;window.__openGroup=d.gid?+d.gid:undefined;window.__shiftSub=d.sub||undefined;tab=d.tab;shell()}catch(e){}}
-const QC_BUILD="2026-10-28 22:00 UTC";
+const QC_BUILD="2026-10-29 12:00 UTC";
 function verCard(){
  const c=window.Capacitor;const native=!!(c&&c.isNativePlatform&&c.isNativePlatform());
  const host=location.host||"";
@@ -1157,7 +1157,8 @@ function admin(){
   <button data-as="perms"><span class="ic">${ICON_PERMS}</span>دسترسی‌ها</button>
   <button data-as="chart"><span class="ic">${ICON_CHART}</span>چارت</button>
   <button data-as="home"><span class="ic">${ICON_HOME2}</span>مدیریت صفحه اصلی</button>
-   <button data-as="backup"><span class="ic">${ICON_BACKUP}</span>پشتیبان‌گیری</button>
+   <button data-as="arc"><span class="ic"><svg viewBox="0 0 24 24"><path d="M3 17c4-9 14-9 18 0"/><path d="M3 20h18"/></svg></span>قوس استاندارد ورق</button>
+  <button data-as="backup"><span class="ic">${ICON_BACKUP}</span>پشتیبان‌گیری</button>
   </div>`;
   document.querySelectorAll("[data-as]").forEach(b=>b.onclick=()=>{window.__adminSub=b.dataset.as;admin()});
   return;
@@ -1167,6 +1168,7 @@ function admin(){
  else if(sub=="perms")renderAdminPerms(BK);
  else if(sub=="chart")renderAdminChart(BK);
  else if(sub=="home")renderAdminHome(BK);
+ else if(sub=="arc")renderAdminArc(BK);
  else if(sub=="backup")renderAdminBackup(BK);
 }
 
@@ -1263,6 +1265,53 @@ function renderAdminPerms(BK){
  $("#v").innerHTML=`${BK}<div class="card"><h3>دسترسی‌ها</h3>${Object.entries(PERMS).map(([p,l])=>`<div><b>${l}</b><br>${Object.entries(ROLES).map(([r,rl])=>`<label style="margin-inline-end:14px"><input type="checkbox" style="width:auto;margin:0 4px" data-p="${p}" data-r="${r}" ${S.perms[p].includes(r)?"checked":""}>${rl}</label>`).join("")}</div>`).join("<br>")}</div>`;
  $("#abk").onclick=()=>{window.__adminSub=null;admin()};
  document.querySelectorAll("[data-p]").forEach(c=>c.onchange=()=>{const a=S.perms[c.dataset.p],r=c.dataset.r;S.perms[c.dataset.p]=c.checked?[...new Set([...a,r])]:a.filter(x=>x!=r);save("perms")});
+}
+/* ---------- قوس استاندارد ورق ---------- */
+S.arcs=S.arcs||[];
+if(!KEYS.includes("arcs"))KEYS.push("arcs");
+function arcTool(){
+ window.__toolSub="arc";
+ const list=S.arcs.slice().sort((a,b)=>a.len-b.len);
+ $("#v").innerHTML=`${backBtn()}<div class="card"><h3>میزان قوس استاندارد ورق</h3>${list.length?'<input id="alen" inputmode="decimal" autocomplete="off" placeholder="طول ورق را وارد کنید" style="margin-bottom:0">':'<p class="meta">هنوز جدولی تعریف نشده است. مدیر سامانه باید از «مدیریت سامانه ← قوس استاندارد ورق» آن را تعریف کند.</p>'}</div>${lcdHtml("lcdarc","قوس استاندارد")}`;
+ const inp=document.getElementById("alen");
+ function calc(){
+  const x=parseNum(inp.value);
+  if(x===null){lcdSet("lcdarc","0","");return}
+  const ex=list.find(e=>e.len===x);
+  if(ex){lcdSet("lcdarc",fmtResult(ex.arc),"");return}
+  const lo=[...list].reverse().find(e=>e.len<x),hi=list.find(e=>e.len>x);
+  if(lo&&hi){
+   const v=lo.arc+(hi.arc-lo.arc)*(x-lo.len)/(hi.len-lo.len);
+   lcdSet("lcdarc",fmtResult(Number(v.toPrecision(6))),"تقریبی: بین طول "+lo.len+" و "+hi.len);return;
+  }
+  lcdSet("lcdarc","Err","خارج از محدوده‌ی تعریف‌شده ("+list[0].len+" تا "+list[list.length-1].len+")");
+ }
+ if(inp){inp.oninput=calc;calc()}else lcdSet("lcdarc","0","");
+}
+function renderAdminArc(BK){
+ const list=S.arcs.slice().sort((a,b)=>a.len-b.len);
+ const ed=window.__arEdit?S.arcs.find(x=>x.id==window.__arEdit):null;
+ $("#v").innerHTML=`${BK}<div class="card"><h3>قوس استاندارد ورق</h3>
+ <p class="meta" style="line-height:2">برای هر طول ورق، میزان قوس استاندارد را تعریف کنید. در ابزارهای جانبی، کاربر طول ورق را می‌نویسد و قوس را می‌بیند. اگر طولی که کاربر می‌نویسد بین دو طول تعریف‌شده باشد، عدد تقریبی (درون‌یابی) نشان داده می‌شود.</p>
+ <div class="row" style="flex-wrap:nowrap;align-items:center"><input id="arlen" inputmode="decimal" autocomplete="off" placeholder="طول ورق" value="${ed?ed.len:""}" style="min-width:0"><input id="ararc" inputmode="decimal" autocomplete="off" placeholder="میزان قوس" value="${ed?ed.arc:""}" style="min-width:0"><button class="btn sm" id="aradd" style="flex:0 0 auto;min-width:0">${ed?"ذخیره":"افزودن"}</button></div>
+ <div class="err" id="arerr"></div>
+ ${list.length?list.map(e=>`<div class="frow"><div class="fi">طول <b>${e.len}</b> ← قوس <b>${e.arc}</b></div><button class="btn sm alt" data-aredit="${e.id}" style="min-width:0">ویرایش</button><button class="btn sm alt" data-ardel="${e.id}" style="min-width:0">حذف</button></div>`).join(""):'<p class="meta">هنوز موردی تعریف نشده است.</p>'}</div>`;
+ $("#abk").onclick=()=>{window.__arEdit=undefined;window.__adminSub=null;admin()};
+ document.getElementById("aradd").onclick=()=>{
+  const len=parseNum($("#arlen").value),arc=parseNum($("#ararc").value),err=m=>{$("#arerr").textContent=m};
+  if(len===null||arc===null)return err("طول و قوس را به‌صورت عدد وارد کنید.");
+  if(len<=0)return err("طول باید بزرگ‌تر از صفر باشد.");
+  const dup=S.arcs.find(x=>x.len===len&&(!ed||x.id!==ed.id));
+  if(dup)return err("برای این طول قبلاً قوس تعریف شده؛ آن را ویرایش کنید.");
+  if(ed){ed.len=len;ed.arc=arc}
+  else S.arcs.push({id:nid(),len,arc});
+  window.__arEdit=undefined;save("arcs");renderAdminArc(BK);
+ };
+ document.querySelectorAll("[data-aredit]").forEach(b=>b.onclick=()=>{window.__arEdit=+b.dataset.aredit;renderAdminArc(BK)});
+ document.querySelectorAll("[data-ardel]").forEach(b=>b.onclick=()=>{
+  if(!confirm("این مورد حذف شود؟"))return;
+  S.arcs=S.arcs.filter(x=>x.id!=+b.dataset.ardel);window.__arEdit=undefined;save("arcs");renderAdminArc(BK);
+ });
 }
 function renderAdminChart(BK){
  $("#v").innerHTML=`${BK}<div class="card"><h3>چارت سازمانی واحد</h3>
@@ -1836,6 +1885,7 @@ function openTrainModal(id){
   [...orig,...added].forEach(u=>{if(!keep.has(u))removeStored(u)});
   if(t){t.title=ti;t.text=tx;t.image=image;t.kind=kind;t.imgs=used}
   else S.trainings.push({id:nid(),title:ti,text:tx,image,kind,imgs:used,by:me.id,at:Date.now()});
+  if(!t)notify("all","آموزش جدید: "+ti,"مطلب آموزشی جدید ثبت شد",{tab:"train"});
   save("trainings");closeModal();train();
  };
 }
@@ -1989,7 +2039,7 @@ function ncReport(){
 const TABKEYS={home:["announcement","occasion","posts","tasks","taskReads","nc","ncSeen","complaints","complaintSeen","suggestions","suggReads","gmsgs","groups","reads","shifts","shiftReceipts"],
  qc:["qc","customers","qcTemp"],tasks:["tasks","taskReads"],shift:["shifts","shiftReceipts","shiftPhotos","devStatus"],train:["trainings"],
  nc:["nc","ncSeen"],ncc:["nc","ncSeen","complaints","complaintSeen"],complaints:["complaints","complaintSeen"],suggestions:["suggestions","suggReads"],
- tools:["formulas"],info:["shifts","shiftReceipts","shiftPhotos","devStatus","moist"],qcgram:["posts"],announce:["announcement"],occasion:["occasion"],admin:["announcement","occasion","posts"],profile:[],colleague:["groups","gmsgs","reads"]};
+ tools:["formulas","arcs"],info:["shifts","shiftReceipts","shiftPhotos","devStatus","moist"],qcgram:["posts"],announce:["announcement"],occasion:["occasion"],admin:["announcement","occasion","posts"],profile:[],colleague:["groups","gmsgs","reads"]};
 function applyRemote(rows){
  const changed=[];
  window.__ver=window.__ver||{};window.__base=window.__base||{};
@@ -2064,13 +2114,37 @@ function startSync(){
 }
 
 /* ---- full-screen media viewer + group media ---- */
+async function saveImageFile(url){
+ try{
+  const c=window.Capacitor,native=!!(c&&c.isNativePlatform&&c.isNativePlatform());
+  const has=n=>c&&c.isPluginAvailable&&c.isPluginAvailable(n);
+  if(native&&!(has("Filesystem")&&has("Share"))){toast("برای ذخیره‌ی عکس باید نسخه‌ی جدید APK نصب شود");return}
+  const r=await fetch(url);const b=await r.blob();
+  const ext=((b.type||"image/jpeg").split("/")[1]||"jpg").replace("jpeg","jpg");
+  const name="qc-"+Date.now()+"."+ext;
+  if(native){
+   const data=await new Promise(res=>{const fr=new FileReader();fr.onload=()=>res(String(fr.result).split(",")[1]);fr.readAsDataURL(b)});
+   const FS=(c.Plugins&&c.Plugins.Filesystem)||c.registerPlugin("Filesystem"),SH=(c.Plugins&&c.Plugins.Share)||c.registerPlugin("Share");
+   const w=await FS.writeFile({path:name,data,directory:"CACHE"});
+   await SH.share({title:"ذخیره‌ی عکس",url:w.uri,dialogTitle:"ذخیره یا ارسال عکس"});
+   return;
+  }
+  const f=new File([b],name,{type:b.type});
+  if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f]});return}
+  const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},2000);
+ }catch(e){
+  if(e&&(e.name==="AbortError"||/cancel/i.test(String(e.message||e))))return;
+  try{window.open(url,"_blank")}catch(x){toast("ذخیره‌ی عکس ناموفق بود")}
+ }
+}
 function closeMediaViewer(){const v=document.getElementById("imgviewer");if(v)v.remove()}
 function openMediaViewer(items,idx){
  closeMediaViewer();
  if(!items.length)return;
  let i=Math.max(0,Math.min(idx,items.length-1));
  const v=document.createElement("div");v.id="imgviewer";
- v.innerHTML=`<div class="vtop"><button type="button" id="vclose" aria-label="بستن">✕</button><div class="vinfo" id="vinfo"></div></div><div class="vimg"><img id="vimg" alt=""><button type="button" class="vnav vprev" id="vprev" aria-label="قبلی">›</button><button type="button" class="vnav vnext" id="vnext" aria-label="بعدی">‹</button></div>`;
+ v.innerHTML=`<div class="vtop"><button type="button" id="vclose" aria-label="بستن">✕</button><div class="vinfo" id="vinfo"></div><button type="button" id="vsave" aria-label="ذخیره" style="margin-inline-start:auto;width:auto;height:36px;padding:0 14px;font-size:15px;border:1px solid rgba(255,255,255,.55);border-radius:99px">ذخیره</button></div><div class="vimg"><img id="vimg" alt=""><button type="button" class="vnav vprev" id="vprev" aria-label="قبلی">›</button><button type="button" class="vnav vnext" id="vnext" aria-label="بعدی">‹</button></div>`;
  document.body.appendChild(v);
  function show(){
   const it=items[i];
@@ -2080,6 +2154,7 @@ function openMediaViewer(items,idx){
   document.getElementById("vnext").style.display=i<items.length-1?"flex":"none";
  }
  document.getElementById("vclose").onclick=closeMediaViewer;
+ document.getElementById("vsave").onclick=()=>saveImageFile(items[i].url);
  document.getElementById("vprev").onclick=()=>{if(i>0){i--;show()}};
  document.getElementById("vnext").onclick=()=>{if(i<items.length-1){i++;show()}};
  let x0=null;
@@ -2111,8 +2186,10 @@ function ncc(){
 function tools(){
  if(window.__toolSub==="units")return units();
  if(window.__toolSub==="roll")return rollWaste();
+ if(window.__toolSub==="arc")return arcTool();
  hubPage("ابزارهای جانبی",[
   {go:"units",title:"تبدیل واحدها",sub:"تبدیل با فرمول‌های تعریف‌شده",icon:'<svg viewBox="0 0 24 24"><path d="M3 8h14l-3-3M21 16H7l3 3"/></svg>'},
+  {go:"arc",title:"میزان قوس استاندارد ورق",sub:"قوس استاندارد بر اساس طول ورق",icon:'<svg viewBox="0 0 24 24"><path d="M3 17c4-9 14-9 18 0"/><path d="M3 20h18"/></svg>'},
   {go:"roll",title:"محاسبه ضایعات رول",sub:"وزن خرابی و درصد ضایعات",icon:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3"/><path d="M12 3.5a8.5 8.5 0 018.5 8.5"/></svg>'}]);
  document.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>{window.__toolSub=b.dataset.go;shell()});
 }
