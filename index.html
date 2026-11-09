@@ -571,7 +571,7 @@ function pushPlugin(){
 async function registerToken(){try{if(sb&&me&&window.__pushToken)await sb.rpc("register_device",{p_uid:me.id,p_token:window.__pushToken})}catch(e){}}
 function unregisterDevice(){try{if(sb&&window.__pushToken)sb.rpc("unregister_device",{p_token:window.__pushToken}).then(()=>{},()=>{})}catch(e){}}
 function openFromPush(d){try{if(!me||!d||!d.tab)return;window.__openGroup=d.gid?+d.gid:undefined;window.__shiftSub=d.sub||undefined;tab=d.tab;shell()}catch(e){}}
-const QC_BUILD="2026-10-30 10:00 UTC";
+const QC_BUILD="2026-10-30 14:00 UTC";
 function verCard(){
  const c=window.Capacitor;const native=!!(c&&c.isNativePlatform&&c.isNativePlatform());
  const host=location.host||"";
@@ -2293,10 +2293,13 @@ function rollWaste(){
  <div class="fld"><label>عمق خرابی</label><div class="in2"><input id="rd" inputmode="decimal" autocomplete="off" placeholder="مثلاً 5">${sel("rdu",LEN,"cm")}</div></div>
  <div class="fld"><label>تعداد دور</label><div class="in2"><input id="rt" inputmode="decimal" autocomplete="off" placeholder="مثلاً 3"></div></div>
  <div class="fld"><label>قطر رول</label><div class="in2"><input id="rr" inputmode="decimal" autocomplete="off" placeholder="مثلاً 80">${sel("rru",LEN,"cm")}</div></div>
+ <div class="fld"><label>عرض رول</label><div class="in2"><input id="rw" inputmode="decimal" autocomplete="off" placeholder="مثلاً 100">${sel("rwu",LEN,"cm")}</div></div>
  <div class="fld"><label>گرماژ (g/m²)</label><div class="in2"><input id="rg" inputmode="decimal" autocomplete="off" placeholder="مثلاً 70"></div></div>
  <div class="fld" style="margin-bottom:0"><label>میزان کل محموله</label><div class="in2"><input id="rm" inputmode="decimal" autocomplete="off" placeholder="مثلاً 1500">${sel("rmu",[["kg","kg"],["ton","تن"]],"kg")}</div></div>
  </div></div>
  ${lcdHtml("lcdw","میزان خرابی")}${lcdHtml("lcdp","درصد ضایعات از کل محموله")}
+ ${lcdHtml("lcdx","میزان خرابی جهت تخصیص")}
+ <p class="meta" style="margin-top:12px;line-height:1.9">میزان خرابی جهت تخصیص = عرض رول × قطر × π × تعداد دور × گرماژ (همان فرمول میزان خرابی، با عرض رول به‌جای عمق خرابی).</p>
  <p class="meta" style="margin-top:12px;line-height:1.9">میزان خرابی = عمق × قطر × π × تعداد دور × گرماژ (با تبدیل خودکار واحدها به متر و گرم، خروجی کیلوگرم).<br>درصد ضایعات = میزان خرابی ÷ کل محموله × ۱۰۰</p>`;
  const f=id=>document.getElementById(id).value;
  function calc(){
@@ -2312,8 +2315,17 @@ function rollWaste(){
   if(totKg===0){lcdSet("lcdp","Err","%");return}
   lcdSet("lcdp",fmtResult(Number((kg/totKg*100).toPrecision(5))),"%");
  }
- ["rd","rt","rr","rg","rm"].forEach(id=>document.getElementById(id).oninput=calc);
- ["rdu","rru","rmu"].forEach(id=>document.getElementById(id).onchange=calc);
+ function calcX(){
+  const M={mm:.001,cm:.01,m:1};
+  const w=parseNum(f("rw")),t=parseNum(f("rt")),r=parseNum(f("rr")),g=parseNum(f("rg"));
+  if([w,t,r,g].some(v=>v!==null&&v<0)){lcdSet("lcdx","Err","kg");return}
+  if(w===null||t===null||r===null||g===null){lcdSet("lcdx","0","kg");return}
+  const kg=(w*M[f("rwu")])*(r*M[f("rru")])*Math.PI*t*g/1000;
+  lcdSet("lcdx",fmtResult(Number(kg.toPrecision(6))),"kg");
+ }
+ ["rd","rt","rr","rg","rm","rw"].forEach(id=>document.getElementById(id).oninput=()=>{calc();calcX()});
+ calcX();
+ ["rdu","rru","rmu","rwu"].forEach(id=>document.getElementById(id).onchange=()=>{calc();calcX()});
  document.getElementById("rreset").onclick=()=>rollWaste();
  calc();
 }
