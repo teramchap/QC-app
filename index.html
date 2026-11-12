@@ -571,7 +571,7 @@ function pushPlugin(){
 async function registerToken(){try{if(sb&&me&&window.__pushToken)await sb.rpc("register_device",{p_uid:me.id,p_token:window.__pushToken})}catch(e){}}
 function unregisterDevice(){try{if(sb&&window.__pushToken)sb.rpc("unregister_device",{p_token:window.__pushToken}).then(()=>{},()=>{})}catch(e){}}
 function openFromPush(d){try{if(!me||!d||!d.tab)return;window.__openGroup=d.gid?+d.gid:undefined;window.__shiftSub=d.sub||undefined;tab=d.tab;shell()}catch(e){}}
-const QC_BUILD="2026-10-31 14:00 UTC";
+const QC_BUILD="2026-11-01 10:00 UTC";
 function verCard(){
  const c=window.Capacitor;const native=!!(c&&c.isNativePlatform&&c.isNativePlatform());
  const host=location.host||"";
@@ -1340,9 +1340,155 @@ function renderAdminComp(BK){
  $("#abk").onclick=()=>{window.__compSub=undefined;window.__adminSub=null;admin()};
  document.querySelectorAll("[data-cs]").forEach(b=>b.onclick=()=>{window.__compSub=b.dataset.cs;admin()});
 }
+/* ---------- جبران خدمت ماهیانه ---------- */
+S.compMonths=S.compMonths||[];
+if(!KEYS.includes("compMonths"))KEYS.push("compMonths");
+const compMonthName=m=>JMONTHS[m.m-1]+" "+m.y;
+const compNum=v=>v===null||v===undefined?"—":fmtResult(Number(Number(v).toPrecision(8)));
+const compPct=v=>v===null||v===undefined?"—":compNum(v)+"٪";
+function compCalc(m,c){
+ const u=m.unit||{};
+ const rng=(list,x)=>{
+  if(x===null||x===undefined)return null;
+  const h=list.find(r=>x>=r.from&&(r.to===null||r.to===undefined||x<=r.to));
+  return h?h.pct:null;
+ };
+ const P=rng(c.commission,u.tiraj),W=rng(c.waste,u.waste),R=rng(c.rework,u.rework);
+ const cx=(u.complaints===null||u.complaints===undefined)?null:c.complaints.find(r=>r.count===u.complaints);
+ const C=cx?cx.pct:null;
+ const U=(W!==null&&R!==null&&C!==null)?Number((W+R+C+70).toFixed(6)):null;
+ return {P,W,R,C,U};
+}
+function compUserTotal(calc,items){
+ const sum=Number(items.reduce((a,x)=>a+x.pts,0).toFixed(6));
+ const T=(calc.U!==null&&calc.P!==null)?(calc.U-sum)/100*calc.P:null;
+ return {sum,T};
+}
+function compLcd(id,T){lcdSet(id,T===null?"0":fmtResult(Number(T.toPrecision(6))),T===null?"محاسبه کامل نیست":"٪ درصد کل")}
+const compMiss=(val,res)=>val===null||val===undefined?"—":(res===null?"بازه‌ای تعریف نشده":compPct(res));
+const compRow=(l,v)=>`<div class="frow"><div class="fi">${l}</div><b>${v}</b></div>`;
+
 function renderCompMonthly(BK){
- $("#v").innerHTML=`${BK}<div class="card"><h3>جبران خدمت ماهیانه</h3><p class="meta">این بخش بعد از مشخص شدن نحوه‌ی محاسبه تکمیل می‌شود.</p></div>`;
+ if(window.__compMonth)return renderCompMonthDetail(BK);
+ const list=S.compMonths.slice().sort((a,b)=>(b.y*100+b.m)-(a.y*100+a.m));
+ const tp=persianParts(new Date());
+ $("#v").innerHTML=`${BK}<div class="row" style="align-items:center;flex-wrap:nowrap"><h3 style="flex:1;margin:0;min-width:0">جبران خدمت ماهیانه</h3><button class="btn sm" id="cmnew" style="flex:0 0 auto;min-width:0">+ ماه جدید</button></div>
+ ${list.length?list.map(m=>`<div class="card" data-cm="${m.id}" style="cursor:pointer;margin-top:10px"><div class="row" style="align-items:center;flex-wrap:nowrap"><b style="flex:1;min-width:0">${compMonthName(m)}</b><span class="tag ${m.pub?"ok":"wa"}">${m.pub?"منتشر شده":"پیش‌نویس"}</span></div><div class="meta">${m.users.length} کاربر</div></div>`).join(""):'<p class="meta" style="margin-top:10px">هنوز ماهی ثبت نشده است.</p>'}`;
  $("#abk").onclick=()=>{window.__compSub=undefined;admin()};
+ document.querySelectorAll("[data-cm]").forEach(c=>c.onclick=()=>{window.__compMonth=+c.dataset.cm;renderCompMonthly(BK)});
+ $("#cmnew").onclick=()=>{
+  const yrs=[];for(let y=tp.y-1;y<=tp.y+1;y++)yrs.push(y);
+  openModal(`<h3>ماه جدید</h3><div class="row"><select id="cmm">${JMONTHS.map((n,i)=>`<option value="${i+1}" ${i+1==tp.m?"selected":""}>${n}</option>`).join("")}</select><select id="cmy">${yrs.map(y=>`<option value="${y}" ${y==tp.y?"selected":""}>${y}</option>`).join("")}</select></div><p class="meta">برای همه‌ی کاربران فعال یک ثبت ساخته می‌شود.</p><div class="err" id="cme"></div><button class="btn" id="cmgo" style="width:100%">ایجاد</button>`);
+  $("#cmgo").onclick=()=>{
+   const y=+$("#cmy").value,mo=+$("#cmm").value;
+   if(S.compMonths.some(x=>x.y===y&&x.m===mo))return $("#cme").textContent="برای این ماه قبلاً ثبت ساخته شده است.";
+   const rec={id:nid(),y,m:mo,unit:{tiraj:null,waste:null,rework:null,complaints:null},users:S.users.filter(u=>u.on).map(u=>({id:u.id,items:[]})),pub:false,by:me.id,at:Date.now()};
+   S.compMonths.push(rec);save("compMonths");closeModal();window.__compMonth=rec.id;renderCompMonthly(BK);
+  };
+ };
+}
+function renderCompMonthDetail(BK){
+ const m=S.compMonths.find(x=>x.id==window.__compMonth);
+ if(!m){window.__compMonth=undefined;return renderCompMonthly(BK)}
+ let added=false;
+ S.users.filter(u=>u.on).forEach(u=>{if(!m.users.some(x=>x.id==u.id)){m.users.push({id:u.id,items:[]});added=true}});
+ if(added)save("compMonths");
+ const c=compData(),calc=compCalc(m,c),u0=m.unit||{},inds=c.indicators||[];
+ const vv=x=>x===null||x===undefined?"":x;
+ const users=m.users.slice().sort((a,b)=>String(uname(a.id)).localeCompare(String(uname(b.id)),"fa"));
+ $("#v").innerHTML=`${BK}
+ <div class="card"><h3>${compMonthName(m)} — نتایج واحد</h3>
+ <div class="fld"><label>تیراژ</label><input id="cu_t" inputmode="decimal" autocomplete="off" value="${vv(u0.tiraj)}"></div>
+ <div class="fld"><label>انحراف ضایعات</label><input id="cu_w" inputmode="decimal" autocomplete="off" value="${vv(u0.waste)}"></div>
+ <div class="fld"><label>دوباره‌کاری</label><input id="cu_r" inputmode="decimal" autocomplete="off" value="${vv(u0.rework)}"></div>
+ <div class="fld"><label>شکایت مشتری (تعداد)</label><input id="cu_c" inputmode="numeric" autocomplete="off" value="${vv(u0.complaints)}"></div>
+ <div class="err" id="cuerr"></div><button class="btn sm" id="cusave">ذخیره و محاسبه</button>
+ <div style="margin-top:12px">${compRow("ضریب پورسانت (از تیراژ)",compMiss(u0.tiraj,calc.P))}${compRow("درصد انحراف ضایعات",compMiss(u0.waste,calc.W))}${compRow("درصد دوباره‌کاری",compMiss(u0.rework,calc.R))}${compRow("درصد شکایت مشتری",compMiss(u0.complaints,calc.C))}${compRow("پایه",70)}${compRow("جمع واحد",calc.U===null?"—":compNum(calc.U))}</div></div>
+ ${users.map(x=>{const tot=compUserTotal(calc,x.items);return `<div class="card"><div class="row" style="align-items:center;flex-wrap:nowrap;border:0">${avatar(x.id,30)}<b style="flex:1;min-width:0">${esc(uname(x.id))}</b></div>
+ ${x.items.length?x.items.map(it=>`<div class="frow"><div class="fi">${esc(it.title)}: <b>${compNum(it.pts)}</b> امتیاز</div><button class="btn sm alt" data-cie="${x.id}:${it.id}" style="min-width:0">ویرایش</button><button class="btn sm alt" data-cid="${x.id}:${it.id}" style="min-width:0">حذف</button></div>`).join(""):'<p class="meta">شاخصی انتخاب نشده است.</p>'}
+ ${inds.length?`<div class="row" style="flex-wrap:nowrap;align-items:center;border:0"><select data-cis="${x.id}" style="min-width:0"><option value="">شاخص…</option>${inds.filter(i=>!x.items.some(it=>it.indId===i.id)).map(i=>`<option value="${i.id}">${esc(i.title)}</option>`).join("")}</select><input data-cip="${x.id}" inputmode="decimal" autocomplete="off" placeholder="امتیاز" style="min-width:0;max-width:90px"><button class="btn sm" data-cia="${x.id}" style="flex:0 0 auto;min-width:0">افزودن</button></div><div class="err" data-cerr="${x.id}"></div>`:'<p class="meta">ابتدا در «مبنای محاسبه» شاخص تعریف کنید.</p>'}
+ <div class="meta">جمع امتیاز کسر شده: <b>${compNum(tot.sum)}</b></div>${lcdHtml("lcdc"+x.id,"درصد کل")}</div>`}).join("")}
+ <button class="btn" id="cpub" style="width:100%;margin-bottom:10px">${m.pub?"لغو انتشار برای کاربران":"انتشار برای کاربران"}</button>
+ <button class="btn sm alt" id="cdelm">حذف این ماه</button>`;
+ users.forEach(x=>compLcd("lcdc"+x.id,compUserTotal(calc,x.items).T));
+ $("#abk").onclick=()=>{window.__compMonth=undefined;admin()};
+ document.getElementById("cusave").onclick=()=>{
+  const err=t=>{document.getElementById("cuerr").textContent=t};
+  const ids={tiraj:"cu_t",waste:"cu_w",rework:"cu_r",complaints:"cu_c"},vals={};
+  for(const k in ids){
+   const t=document.getElementById(ids[k]).value.trim();
+   if(t===""){vals[k]=null;continue}
+   const n=parseNum(t);
+   if(n===null)return err("همه‌ی مقادیر باید عدد باشند.");
+   vals[k]=n;
+  }
+  if(vals.complaints!==null&&(vals.complaints<0||Math.floor(vals.complaints)!==vals.complaints))return err("تعداد شکایت باید عدد صحیح (صفر یا بیشتر) باشد.");
+  m.unit=vals;save("compMonths");renderCompMonthDetail(BK);
+ };
+ document.querySelectorAll("[data-cia]").forEach(b=>b.onclick=()=>{
+  const uid=+b.dataset.cia,x=m.users.find(y=>y.id===uid);
+  const sel=document.querySelector(`[data-cis="${uid}"]`),pi=document.querySelector(`[data-cip="${uid}"]`),err=document.querySelector(`[data-cerr="${uid}"]`);
+  const ind=inds.find(i=>String(i.id)===sel.value),pts=parseNum(pi.value);
+  if(!ind)return err.textContent="یک شاخص انتخاب کنید.";
+  if(pts===null)return err.textContent="امتیاز را به‌صورت عدد وارد کنید.";
+  x.items.push({id:nid(),indId:ind.id,title:ind.title,pts});save("compMonths");renderCompMonthDetail(BK);
+ });
+ document.querySelectorAll("[data-cie]").forEach(b=>b.onclick=()=>{
+  const [uid,iid]=b.dataset.cie.split(":").map(Number);
+  const it=m.users.find(y=>y.id===uid).items.find(z=>z.id===iid);
+  const v=prompt("امتیاز جدید:",it.pts);if(v===null)return;
+  const n=parseNum(v);if(n===null)return toast("عدد معتبر نیست");
+  it.pts=n;save("compMonths");renderCompMonthDetail(BK);
+ });
+ document.querySelectorAll("[data-cid]").forEach(b=>b.onclick=()=>{
+  const [uid,iid]=b.dataset.cid.split(":").map(Number);
+  const x=m.users.find(y=>y.id===uid);
+  x.items=x.items.filter(z=>z.id!==iid);save("compMonths");renderCompMonthDetail(BK);
+ });
+ document.getElementById("cpub").onclick=()=>{
+  if(!m.pub){
+   if(calc.U===null||calc.P===null){alert("ابتدا فیلدهای واحد را کامل کنید و مطمئن شوید برای هر مقدار، بازه‌ی تعریف‌شده در «مبنای محاسبه» وجود دارد.");return}
+   if(!confirm("نتیجه برای همه‌ی کاربران این ماه قابل مشاهده می‌شود. منتشر شود؟"))return;
+   m.pub=true;
+   notify(m.users.map(x=>x.id),"جبران خدمت "+compMonthName(m),"نتیجه‌ی جبران خدمت ماهیانه‌ی شما منتشر شد",{tab:"profile"});
+  }else{
+   if(!confirm("انتشار لغو شود؟"))return;
+   m.pub=false;
+  }
+  save("compMonths");renderCompMonthDetail(BK);
+ };
+ document.getElementById("cdelm").onclick=()=>{
+  if(!confirm("این ماه و همه‌ی امتیازهای آن برای همیشه حذف شود؟"))return;
+  S.compMonths=S.compMonths.filter(x=>x.id!==m.id);window.__compMonth=undefined;save("compMonths");renderCompMonthly(BK);
+ };
+}
+
+/* ---- سمت کاربر (داخل صفحه‌ی پروفایل) ---- */
+function myCompMonths(){
+ return S.compMonths.filter(m=>m.pub&&m.users.some(x=>x.id==me.id)).sort((a,b)=>(b.y*100+b.m)-(a.y*100+a.m));
+}
+function myCompCard(){
+ const list=myCompMonths(),c=compData();
+ const html=`<div class="card"><h3>جبران خدمت ماهیانه</h3>${list.length?list.map(m=>{
+  const u=m.users.find(x=>x.id==me.id),t=compUserTotal(compCalc(m,c),u.items).T;
+  return `<div class="frow" data-mycomp="${m.id}" style="cursor:pointer"><div class="fi"><b>${compMonthName(m)}</b></div><span class="tag">${t===null?"—":fmtResult(Number(t.toPrecision(6)))+"٪"}</span></div>`;
+ }).join(""):'<p class="meta">هنوز نتیجه‌ای منتشر نشده است.</p>'}</div>`;
+ const first=document.getElementById("v").firstElementChild;
+ if(first)first.insertAdjacentHTML("afterend",html);
+ document.querySelectorAll("[data-mycomp]").forEach(r=>r.onclick=()=>{window.__myComp=+r.dataset.mycomp;profile()});
+}
+function myCompDetail(id){
+ const m=S.compMonths.find(x=>x.id==id&&x.pub),u=m&&m.users.find(x=>x.id==me.id);
+ if(!m||!u){window.__myComp=undefined;return profile()}
+ const c=compData(),calc=compCalc(m,c),tot=compUserTotal(calc,u.items),un=m.unit||{};
+ $("#v").innerHTML=`${backBtn()}
+ <div class="card"><h3>جبران خدمت ${compMonthName(m)}</h3><h3 style="font-size:14px;margin-top:6px">نتایج واحد</h3>
+ ${compRow("تیراژ",compNum(un.tiraj))}${compRow("ضریب پورسانت",compPct(calc.P))}${compRow("درصد انحراف ضایعات",compPct(calc.W))}${compRow("درصد دوباره‌کاری",compPct(calc.R))}${compRow("درصد شکایت مشتری",compPct(calc.C))}${compRow("پایه",70)}${compRow("جمع واحد",calc.U===null?"—":compNum(calc.U))}</div>
+ <div class="card"><h3>امتیازات کسر شده‌ی شما</h3>
+ ${u.items.length?u.items.map(it=>compRow(esc(it.title),compNum(it.pts))).join(""):'<p class="meta">شاخصی برای شما ثبت نشده است.</p>'}
+ ${compRow("جمع امتیاز کسر شده",compNum(tot.sum))}</div>
+ ${lcdHtml("lcdmy","درصد کل شما")}`;
+ compLcd("lcdmy",tot.T);
 }
 function compIndicators(BK){
  const c=compData();c.indicators=c.indicators||[];
@@ -1534,6 +1680,7 @@ function chartTree(){
 function fileToDataURL(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(f)})}
 function avatar(uid,size){size=size||26;const u=S.users.find(x=>x.id==uid);if(u&&u.photo)return `<img src="${u.photo}" style="width:${size}px;height:${size}px;border-radius:99px;object-fit:cover;flex:0 0 auto">`;const n=(u?u.name:"?").trim()[0]||"?";return `<span style="display:inline-flex;align-items:center;justify-content:center;width:${size}px;height:${size}px;border-radius:99px;background:var(--accent,#d91c2e);color:#fff;font-size:${Math.round(size*0.45)}px;flex:0 0 auto">${esc(n)}</span>`}
 function profile(){
+ if(window.__myComp)return myCompDetail(window.__myComp);
  $("#v").innerHTML=`<div class="card" style="text-align:center">
  <label style="cursor:pointer;display:inline-block" id="pfl2">${avatar(me.id,84)}<div class="meta">برای تغییر عکس بزنید</div><input type="file" id="pf2" accept="image/*" style="display:none"></label>
  <h3 style="margin:10px 0 2px">${esc(me.name)}</h3>
@@ -1550,6 +1697,7 @@ function profile(){
  <input id="psa" placeholder="پاسخ شما" value="${me.secA?esc(me.secA):""}">
  <div class="err" id="pse"></div><button class="btn sm" id="psb">ذخیره سوال امنیتی</button></div>
  `;
+ myCompCard();
  $("#pf2").onchange=async()=>{const f=$("#pf2").files[0];if(!f)return;const url=await uploadImage(f);me.photo=url;save("users");profile()};
  $("#pdark").onchange=()=>{const dark=$("#pdark").checked;setTheme(dark?"dark":"light")};
  $("#ppb").onclick=()=>{const p1=$("#ppw1").value,p2=$("#ppw2").value,p3=$("#ppw3").value;
@@ -2532,7 +2680,7 @@ function formulaModal(id){
 
 /* ---- back button: always one level UP in the app structure ---- */
 (function(){
- const FLAGS=["__compSub","__compEdit","__indEdit","__qcSub","__shiftSub","__toolSub","__openNc","__openPost","__adminSub","__adminHomeSub","__openTask","__openGroup","__openComplaint","__editUser","__editPost","__qcSel","__infoSub","__moistOpen","__moistQ"];
+ const FLAGS=["__compSub","__compEdit","__indEdit","__compMonth","__myComp","__qcSub","__shiftSub","__toolSub","__openNc","__openPost","__adminSub","__adminHomeSub","__openTask","__openGroup","__openComplaint","__editUser","__editPost","__qcSel","__infoSub","__moistOpen","__moistQ"];
  function clearAll(){FLAGS.forEach(k=>{window[k]=undefined})}
  window.resetNav=clearAll;
  window.appBack=function(){
@@ -2548,6 +2696,7 @@ function formulaModal(id){
    case "nc":if(W.__openNc){W.__openNc=undefined;return go("nc")}clearAll();return go("ncc");
    case "complaints":if(W.__openComplaint){W.__openComplaint=undefined;return go("complaints")}clearAll();return go("ncc");
    case "shift":if(W.__shiftSub){W.__shiftSub=undefined;return go("shift")}clearAll();return go("info");
+   case "profile":if(W.__myComp){W.__myComp=undefined;return go("profile")}clearAll();return go("home");
    case "info":
     if(W.__infoSub==="shift"&&W.__shiftSub){W.__shiftSub=undefined;return go("info")}
     if(W.__infoSub==="moist"&&W.__moistOpen){W.__moistOpen=undefined;return go("info")}
@@ -2559,6 +2708,7 @@ function formulaModal(id){
    case "colleague":if(W.__openGroup){W.__openGroup=undefined;W.__gWasNearBottom=undefined;return go("colleague")}clearAll();return go("home");
    case "qc":if(W.__qcSel){W.__qcSel=undefined;return go("qc")}if(W.__qcSub){W.__qcSub=undefined;return go("qc")}clearAll();return go("home");
    case "admin":
+    if(W.__adminSub==="comp"&&W.__compSub==="monthly"&&W.__compMonth){W.__compMonth=undefined;return go("admin")}
     if(W.__adminSub==="comp"&&W.__compSub){W.__compSub=undefined;W.__compEdit=undefined;return go("admin")}
     if(W.__adminSub==="home"&&W.__adminHomeSub){W.__adminHomeSub=undefined;W.__editPost=undefined;return go("admin")}
     if(W.__adminSub){W.__adminSub=undefined;W.__adminHomeSub=undefined;W.__editUser=undefined;W.__editPost=undefined;return go("admin")}
