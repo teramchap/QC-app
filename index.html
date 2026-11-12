@@ -571,7 +571,7 @@ function pushPlugin(){
 async function registerToken(){try{if(sb&&me&&window.__pushToken)await sb.rpc("register_device",{p_uid:me.id,p_token:window.__pushToken})}catch(e){}}
 function unregisterDevice(){try{if(sb&&window.__pushToken)sb.rpc("unregister_device",{p_token:window.__pushToken}).then(()=>{},()=>{})}catch(e){}}
 function openFromPush(d){try{if(!me||!d||!d.tab)return;window.__openGroup=d.gid?+d.gid:undefined;window.__shiftSub=d.sub||undefined;tab=d.tab;shell()}catch(e){}}
-const QC_BUILD="2026-10-30 14:00 UTC";
+const QC_BUILD="2026-10-31 10:00 UTC";
 function verCard(){
  const c=window.Capacitor;const native=!!(c&&c.isNativePlatform&&c.isNativePlatform());
  const host=location.host||"";
@@ -1158,6 +1158,7 @@ function admin(){
   <button data-as="chart"><span class="ic">${ICON_CHART}</span>چارت</button>
   <button data-as="home"><span class="ic">${ICON_HOME2}</span>مدیریت صفحه اصلی</button>
    <button data-as="arc"><span class="ic"><svg viewBox="0 0 24 24"><path d="M3 17c4-9 14-9 18 0"/><path d="M3 20h18"/></svg></span>قوس استاندارد ورق</button>
+  <button data-as="comp"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v10M14.5 9.5c-.6-.9-1.5-1.3-2.5-1.3-1.4 0-2.4.7-2.4 1.8 0 2.6 4.9 1.4 4.9 4 0 1.1-1 1.8-2.5 1.8-1.1 0-2-.4-2.6-1.300"/></svg></span>جبران خدمت</button>
   <button data-as="backup"><span class="ic">${ICON_BACKUP}</span>پشتیبان‌گیری</button>
   </div>`;
   document.querySelectorAll("[data-as]").forEach(b=>b.onclick=()=>{window.__adminSub=b.dataset.as;admin()});
@@ -1169,6 +1170,7 @@ function admin(){
  else if(sub=="chart")renderAdminChart(BK);
  else if(sub=="home")renderAdminHome(BK);
  else if(sub=="arc")renderAdminArc(BK);
+ else if(sub=="comp")renderAdminComp(BK);
  else if(sub=="backup")renderAdminBackup(BK);
 }
 
@@ -1311,6 +1313,84 @@ function renderAdminArc(BK){
  document.querySelectorAll("[data-ardel]").forEach(b=>b.onclick=()=>{
   if(!confirm("این مورد حذف شود؟"))return;
   S.arcs=S.arcs.filter(x=>x.id!=+b.dataset.ardel);window.__arEdit=undefined;save("arcs");renderAdminArc(BK);
+ });
+}
+/* ---------- جبران خدمت ---------- */
+S.comp=S.comp||{};
+if(!KEYS.includes("comp"))KEYS.push("comp");
+const COMP_CFG=[
+ {k:"commission",title:"ضریب پورسانت",hint:"بازه‌ی تیراژ و درصد پورسانت هر بازه. اگر «تا» را خالی بگذارید یعنی تا بی‌نهایت.",range:true,fromP:"تیراژ از",toP:"تیراژ تا"},
+ {k:"waste",title:"انحراف ضایعات",hint:"بازه‌ی انحراف ضایعات و درصد جبران خدمت هر بازه. اگر «تا» را خالی بگذارید یعنی تا بی‌نهایت.",range:true,fromP:"از",toP:"تا"},
+ {k:"rework",title:"دوباره‌کاری",hint:"بازه‌ی دوباره‌کاری و درصد جبران خدمت هر بازه. اگر «تا» را خالی بگذارید یعنی تا بی‌نهایت.",range:true,fromP:"از",toP:"تا"},
+ {k:"complaints",title:"شکایات مشتریان",hint:"تعداد شکایت و درصد جبران خدمت متناظر با آن.",range:false,countP:"تعداد شکایت"}
+];
+function compData(){
+ const c=S.comp=S.comp||{};
+ COMP_CFG.forEach(x=>{c[x.k]=c[x.k]||[]});
+ return c;
+}
+function renderAdminComp(BK){
+ const sub=window.__compSub;
+ if(sub==="base")return renderCompBase(BK);
+ if(sub==="monthly")return renderCompMonthly(BK);
+ $("#v").innerHTML=`${BK}<h3 style="margin:0 0 12px">جبران خدمت</h3><div class="menugrid hub">
+ <button data-cs="base"><span class="ic"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M4 10h16M9 5v14"/></svg></span><span class="lbl"><span>مبنای محاسبه<span class="hs">ضرایب و درصدهای پایه</span></span></span></button>
+ <button data-cs="monthly"><span class="ic"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/></svg></span><span class="lbl"><span>جبران خدمت ماهیانه<span class="hs">محاسبه‌ی ماهانه</span></span></span></button>
+ </div>`;
+ $("#abk").onclick=()=>{window.__compSub=undefined;window.__adminSub=null;admin()};
+ document.querySelectorAll("[data-cs]").forEach(b=>b.onclick=()=>{window.__compSub=b.dataset.cs;admin()});
+}
+function renderCompMonthly(BK){
+ $("#v").innerHTML=`${BK}<div class="card"><h3>جبران خدمت ماهیانه</h3><p class="meta">این بخش بعد از مشخص شدن نحوه‌ی محاسبه تکمیل می‌شود.</p></div>`;
+ $("#abk").onclick=()=>{window.__compSub=undefined;admin()};
+}
+function renderCompBase(BK){
+ const c=compData(),ed=window.__compEdit;
+ const toTxt=r=>r.to===null||r.to===undefined?"به بالا":r.to;
+ $("#v").innerHTML=`${BK}<h3 style="margin:0 0 10px">مبنای محاسبه</h3>`+COMP_CFG.map(cfg=>{
+  const list=c[cfg.k].slice().sort((a,b)=>cfg.range?a.from-b.from:a.count-b.count);
+  const e=ed&&ed.k===cfg.k?c[cfg.k].find(x=>x.id==ed.id):null;
+  const inputs=cfg.range
+   ?`<input data-f="${cfg.k}:from" inputmode="decimal" autocomplete="off" placeholder="${cfg.fromP}" value="${e?e.from:""}" style="min-width:0"><input data-f="${cfg.k}:to" inputmode="decimal" autocomplete="off" placeholder="${cfg.toP}" value="${e&&e.to!==null&&e.to!==undefined?e.to:""}" style="min-width:0">`
+   :`<input data-f="${cfg.k}:count" inputmode="numeric" autocomplete="off" placeholder="${cfg.countP}" value="${e?e.count:""}" style="min-width:0">`;
+  return `<div class="card"><h3>${cfg.title}</h3><p class="meta" style="line-height:1.9">${cfg.hint}</p>
+  <div class="row" style="flex-wrap:nowrap;align-items:center">${inputs}<input data-f="${cfg.k}:pct" inputmode="decimal" autocomplete="off" placeholder="درصد" value="${e?e.pct:""}" style="min-width:0"><button class="btn sm" data-add="${cfg.k}" style="flex:0 0 auto;min-width:0">${e?"ذخیره":"افزودن"}</button></div>
+  <div class="err" data-err="${cfg.k}"></div>
+  ${list.length?list.map(r=>`<div class="frow"><div class="fi">${cfg.range?`از <b>${r.from}</b> تا <b>${toTxt(r)}</b>`:`<b>${r.count}</b> شکایت`} ← <b>${r.pct}</b> درصد</div><button class="btn sm alt" data-edit="${cfg.k}:${r.id}" style="min-width:0">ویرایش</button><button class="btn sm alt" data-del="${cfg.k}:${r.id}" style="min-width:0">حذف</button></div>`).join(""):'<p class="meta">هنوز موردی ثبت نشده است.</p>'}</div>`;
+ }).join("");
+ $("#abk").onclick=()=>{window.__compEdit=undefined;window.__compSub=undefined;admin()};
+ document.querySelectorAll("[data-add]").forEach(b=>b.onclick=()=>{
+  const k=b.dataset.add,cfg=COMP_CFG.find(x=>x.k===k);
+  const err=m=>{document.querySelector(`[data-err="${k}"]`).textContent=m};
+  const val=n=>document.querySelector(`[data-f="${k}:${n}"]`).value;
+  const pct=parseNum(val("pct"));
+  if(pct===null)return err("درصد را به‌صورت عدد وارد کنید.");
+  const arr=c[k],eid=ed&&ed.k===k?+ed.id:null;
+  if(cfg.range){
+   const from=parseNum(val("from")),toRaw=val("to").trim(),to=toRaw===""?null:parseNum(toRaw);
+   if(from===null||(toRaw!==""&&to===null))return err("بازه را به‌صورت عدد وارد کنید.");
+   if(to!==null&&to<from)return err("«تا» نباید کمتر از «از» باشد.");
+   const hi=x=>x.to===null||x.to===undefined?Infinity:x.to;
+   const clash=arr.find(x=>x.id!==eid&&from<=hi(x)&&x.from<=(to===null?Infinity:to));
+   if(clash)return err("این بازه با بازه‌ی «"+clash.from+" تا "+toTxt(clash)+"» هم‌پوشانی دارد.");
+   if(eid){const r=arr.find(x=>x.id===eid);r.from=from;r.to=to;r.pct=pct}
+   else arr.push({id:nid(),from,to,pct});
+  }else{
+   const count=parseNum(val("count"));
+   if(count===null||count<0||Math.floor(count)!==count)return err("تعداد باید عدد صحیح (صفر یا بیشتر) باشد.");
+   if(arr.some(x=>x.id!==eid&&x.count===count))return err("برای این تعداد قبلاً درصد ثبت شده؛ آن را ویرایش کنید.");
+   if(eid){const r=arr.find(x=>x.id===eid);r.count=count;r.pct=pct}
+   else arr.push({id:nid(),count,pct});
+  }
+  window.__compEdit=undefined;save("comp");renderCompBase(BK);
+ });
+ document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>{
+  const [k,id]=b.dataset.edit.split(":");window.__compEdit={k,id:+id};renderCompBase(BK);
+ });
+ document.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{
+  if(!confirm("این مورد حذف شود؟"))return;
+  const [k,id]=b.dataset.del.split(":");
+  c[k]=c[k].filter(x=>x.id!==+id);window.__compEdit=undefined;save("comp");renderCompBase(BK);
  });
 }
 function renderAdminChart(BK){
@@ -2429,7 +2509,7 @@ function formulaModal(id){
 
 /* ---- back button: always one level UP in the app structure ---- */
 (function(){
- const FLAGS=["__qcSub","__shiftSub","__toolSub","__openNc","__openPost","__adminSub","__adminHomeSub","__openTask","__openGroup","__openComplaint","__editUser","__editPost","__qcSel","__infoSub","__moistOpen","__moistQ"];
+ const FLAGS=["__compSub","__compEdit","__qcSub","__shiftSub","__toolSub","__openNc","__openPost","__adminSub","__adminHomeSub","__openTask","__openGroup","__openComplaint","__editUser","__editPost","__qcSel","__infoSub","__moistOpen","__moistQ"];
  function clearAll(){FLAGS.forEach(k=>{window[k]=undefined})}
  window.resetNav=clearAll;
  window.appBack=function(){
@@ -2456,6 +2536,7 @@ function formulaModal(id){
    case "colleague":if(W.__openGroup){W.__openGroup=undefined;W.__gWasNearBottom=undefined;return go("colleague")}clearAll();return go("home");
    case "qc":if(W.__qcSel){W.__qcSel=undefined;return go("qc")}if(W.__qcSub){W.__qcSub=undefined;return go("qc")}clearAll();return go("home");
    case "admin":
+    if(W.__adminSub==="comp"&&W.__compSub){W.__compSub=undefined;W.__compEdit=undefined;return go("admin")}
     if(W.__adminSub==="home"&&W.__adminHomeSub){W.__adminHomeSub=undefined;W.__editPost=undefined;return go("admin")}
     if(W.__adminSub){W.__adminSub=undefined;W.__adminHomeSub=undefined;W.__editUser=undefined;W.__editPost=undefined;return go("admin")}
     clearAll();return go("home");
