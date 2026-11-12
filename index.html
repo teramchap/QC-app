@@ -571,7 +571,7 @@ function pushPlugin(){
 async function registerToken(){try{if(sb&&me&&window.__pushToken)await sb.rpc("register_device",{p_uid:me.id,p_token:window.__pushToken})}catch(e){}}
 function unregisterDevice(){try{if(sb&&window.__pushToken)sb.rpc("unregister_device",{p_token:window.__pushToken}).then(()=>{},()=>{})}catch(e){}}
 function openFromPush(d){try{if(!me||!d||!d.tab)return;window.__openGroup=d.gid?+d.gid:undefined;window.__shiftSub=d.sub||undefined;tab=d.tab;shell()}catch(e){}}
-const QC_BUILD="2026-10-31 10:00 UTC";
+const QC_BUILD="2026-10-31 14:00 UTC";
 function verCard(){
  const c=window.Capacitor;const native=!!(c&&c.isNativePlatform&&c.isNativePlatform());
  const host=location.host||"";
@@ -1344,6 +1344,28 @@ function renderCompMonthly(BK){
  $("#v").innerHTML=`${BK}<div class="card"><h3>جبران خدمت ماهیانه</h3><p class="meta">این بخش بعد از مشخص شدن نحوه‌ی محاسبه تکمیل می‌شود.</p></div>`;
  $("#abk").onclick=()=>{window.__compSub=undefined;admin()};
 }
+function compIndicators(BK){
+ const c=compData();c.indicators=c.indicators||[];
+ const list=c.indicators;
+ const ed=window.__indEdit?list.find(x=>x.id==window.__indEdit):null;
+ $("#v").insertAdjacentHTML("beforeend",`<div class="card"><h3>شاخص‌ها</h3><p class="meta" style="line-height:1.9">عنوان شاخص‌هایی که در جبران خدمت استفاده می‌شوند را اینجا تعریف کنید.</p>
+ <div class="row" style="flex-wrap:nowrap;align-items:center"><input id="indt" autocomplete="off" placeholder="عنوان شاخص" value="${ed?esc(ed.title):""}" style="min-width:0"><button class="btn sm" id="indadd" style="flex:0 0 auto;min-width:0">${ed?"ذخیره":"افزودن"}</button></div>
+ <div class="err" id="inderr"></div>
+ ${list.length?list.map((x,i)=>`<div class="frow"><div class="fi">${i+1}. ${esc(x.title)}</div><button class="btn sm alt" data-indedit="${x.id}" style="min-width:0">ویرایش</button><button class="btn sm alt" data-inddel="${x.id}" style="min-width:0">حذف</button></div>`).join(""):'<p class="meta">هنوز شاخصی تعریف نشده است.</p>'}</div>`);
+ document.getElementById("indadd").onclick=()=>{
+  const t=document.getElementById("indt").value.trim(),err=m=>{document.getElementById("inderr").textContent=m};
+  if(!t)return err("عنوان شاخص را بنویسید.");
+  if(list.some(x=>x.id!==(ed&&ed.id)&&nrm(x.title)===nrm(t)))return err("این عنوان قبلاً تعریف شده است.");
+  if(ed)ed.title=t;else list.push({id:nid(),title:t});
+  window.__indEdit=undefined;save("comp");renderCompBase(BK);
+ };
+ document.querySelectorAll("[data-indedit]").forEach(b=>b.onclick=()=>{window.__indEdit=+b.dataset.indedit;renderCompBase(BK)});
+ document.querySelectorAll("[data-inddel]").forEach(b=>b.onclick=()=>{
+  if(!confirm("این شاخص حذف شود؟"))return;
+  c.indicators=c.indicators.filter(x=>x.id!==+b.dataset.inddel);
+  window.__indEdit=undefined;save("comp");renderCompBase(BK);
+ });
+}
 function renderCompBase(BK){
  const c=compData(),ed=window.__compEdit;
  const toTxt=r=>r.to===null||r.to===undefined?"به بالا":r.to;
@@ -1358,7 +1380,8 @@ function renderCompBase(BK){
   <div class="err" data-err="${cfg.k}"></div>
   ${list.length?list.map(r=>`<div class="frow"><div class="fi">${cfg.range?`از <b>${r.from}</b> تا <b>${toTxt(r)}</b>`:`<b>${r.count}</b> شکایت`} ← <b>${r.pct}</b> درصد</div><button class="btn sm alt" data-edit="${cfg.k}:${r.id}" style="min-width:0">ویرایش</button><button class="btn sm alt" data-del="${cfg.k}:${r.id}" style="min-width:0">حذف</button></div>`).join(""):'<p class="meta">هنوز موردی ثبت نشده است.</p>'}</div>`;
  }).join("");
- $("#abk").onclick=()=>{window.__compEdit=undefined;window.__compSub=undefined;admin()};
+ $("#abk").onclick=()=>{window.__indEdit=undefined;window.__compEdit=undefined;window.__compSub=undefined;admin()};
+ compIndicators(BK);
  document.querySelectorAll("[data-add]").forEach(b=>b.onclick=()=>{
   const k=b.dataset.add,cfg=COMP_CFG.find(x=>x.k===k);
   const err=m=>{document.querySelector(`[data-err="${k}"]`).textContent=m};
@@ -2509,7 +2532,7 @@ function formulaModal(id){
 
 /* ---- back button: always one level UP in the app structure ---- */
 (function(){
- const FLAGS=["__compSub","__compEdit","__qcSub","__shiftSub","__toolSub","__openNc","__openPost","__adminSub","__adminHomeSub","__openTask","__openGroup","__openComplaint","__editUser","__editPost","__qcSel","__infoSub","__moistOpen","__moistQ"];
+ const FLAGS=["__compSub","__compEdit","__indEdit","__qcSub","__shiftSub","__toolSub","__openNc","__openPost","__adminSub","__adminHomeSub","__openTask","__openGroup","__openComplaint","__editUser","__editPost","__qcSel","__infoSub","__moistOpen","__moistQ"];
  function clearAll(){FLAGS.forEach(k=>{window[k]=undefined})}
  window.resetNav=clearAll;
  window.appBack=function(){
