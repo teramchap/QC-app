@@ -571,7 +571,7 @@ function pushPlugin(){
 async function registerToken(){try{if(sb&&me&&window.__pushToken)await sb.rpc("register_device",{p_uid:me.id,p_token:window.__pushToken})}catch(e){}}
 function unregisterDevice(){try{if(sb&&window.__pushToken)sb.rpc("unregister_device",{p_token:window.__pushToken}).then(()=>{},()=>{})}catch(e){}}
 function openFromPush(d){try{if(!me||!d||!d.tab)return;window.__openGroup=d.gid?+d.gid:undefined;window.__shiftSub=d.sub||undefined;tab=d.tab;shell()}catch(e){}}
-const QC_BUILD="2026-11-01 10:00 UTC";
+const QC_BUILD="2026-11-02 10:00 UTC";
 function verCard(){
  const c=window.Capacitor;const native=!!(c&&c.isNativePlatform&&c.isNativePlatform());
  const host=location.host||"";
@@ -1360,9 +1360,10 @@ function compCalc(m,c){
  return {P,W,R,C,U};
 }
 function compUserTotal(calc,items){
- const sum=Number(items.reduce((a,x)=>a+x.pts,0).toFixed(6));
- const T=(calc.U!==null&&calc.P!==null)?(calc.U-sum)/100*calc.P:null;
- return {sum,T};
+ const sum=Number(items.filter(x=>!x.bonus).reduce((a,x)=>a+x.pts,0).toFixed(6));
+ const bonus=Number(items.filter(x=>x.bonus).reduce((a,x)=>a+x.pts,0).toFixed(6));
+ const T=(calc.U!==null&&calc.P!==null)?(calc.U-sum+bonus)/100*calc.P:null;
+ return {sum,bonus,T};
 }
 function compLcd(id,T){lcdSet(id,T===null?"0":fmtResult(Number(T.toPrecision(6))),T===null?"محاسبه کامل نیست":"٪ درصد کل")}
 const compMiss=(val,res)=>val===null||val===undefined?"—":(res===null?"بازه‌ای تعریف نشده":compPct(res));
@@ -1405,9 +1406,11 @@ function renderCompMonthDetail(BK){
  <div class="err" id="cuerr"></div><button class="btn sm" id="cusave">ذخیره و محاسبه</button>
  <div style="margin-top:12px">${compRow("ضریب پورسانت (از تیراژ)",compMiss(u0.tiraj,calc.P))}${compRow("درصد انحراف ضایعات",compMiss(u0.waste,calc.W))}${compRow("درصد دوباره‌کاری",compMiss(u0.rework,calc.R))}${compRow("درصد شکایت مشتری",compMiss(u0.complaints,calc.C))}${compRow("پایه",70)}${compRow("جمع واحد",calc.U===null?"—":compNum(calc.U))}</div></div>
  ${users.map(x=>{const tot=compUserTotal(calc,x.items);return `<div class="card"><div class="row" style="align-items:center;flex-wrap:nowrap;border:0">${avatar(x.id,30)}<b style="flex:1;min-width:0">${esc(uname(x.id))}</b></div>
- ${x.items.length?x.items.map(it=>`<div class="frow"><div class="fi">${esc(it.title)}: <b>${compNum(it.pts)}</b> امتیاز</div><button class="btn sm alt" data-cie="${x.id}:${it.id}" style="min-width:0">ویرایش</button><button class="btn sm alt" data-cid="${x.id}:${it.id}" style="min-width:0">حذف</button></div>`).join(""):'<p class="meta">شاخصی انتخاب نشده است.</p>'}
- ${inds.length?`<div class="row" style="flex-wrap:nowrap;align-items:center;border:0"><select data-cis="${x.id}" style="min-width:0"><option value="">شاخص…</option>${inds.filter(i=>!x.items.some(it=>it.indId===i.id)).map(i=>`<option value="${i.id}">${esc(i.title)}</option>`).join("")}</select><input data-cip="${x.id}" inputmode="decimal" autocomplete="off" placeholder="امتیاز" style="min-width:0;max-width:90px"><button class="btn sm" data-cia="${x.id}" style="flex:0 0 auto;min-width:0">افزودن</button></div><div class="err" data-cerr="${x.id}"></div>`:'<p class="meta">ابتدا در «مبنای محاسبه» شاخص تعریف کنید.</p>'}
- <div class="meta">جمع امتیاز کسر شده: <b>${compNum(tot.sum)}</b></div>${lcdHtml("lcdc"+x.id,"درصد کل")}</div>`}).join("")}
+ ${x.items.length?x.items.map(it=>`<div class="frow"><div class="fi">${esc(it.title)}: <b>${it.bonus?"+":""}${compNum(it.pts)}</b> امتیاز${it.note?`<div class="meta">${escn(it.note)}</div>`:""}</div><button class="btn sm alt" data-cie="${x.id}:${it.id}" style="min-width:0">ویرایش</button><button class="btn sm alt" data-cid="${x.id}:${it.id}" style="min-width:0">حذف</button></div>`).join(""):'<p class="meta">شاخصی انتخاب نشده است.</p>'}
+ <div class="row" style="flex-wrap:nowrap;align-items:center;border:0"><select data-cis="${x.id}" style="min-width:0"><option value="">شاخص…</option>${x.items.some(it=>it.bonus)?"":'<option value="bonus">ارفاقی مدیر واحد (امتیاز مثبت)</option>'}${inds.filter(i=>!x.items.some(it=>!it.bonus&&it.indId===i.id)).map(i=>`<option value="${i.id}">${esc(i.title)}</option>`).join("")}</select><input data-cip="${x.id}" inputmode="decimal" autocomplete="off" placeholder="امتیاز" style="min-width:0;max-width:90px"></div>
+ <div class="row" style="flex-wrap:nowrap;align-items:center;border:0"><input data-cin="${x.id}" autocomplete="off" placeholder="توضیح (اختیاری)" style="min-width:0"><button class="btn sm" data-cia="${x.id}" style="flex:0 0 auto;min-width:0">افزودن</button></div>
+ <div class="err" data-cerr="${x.id}"></div>
+ <div class="meta">جمع امتیاز کسر شده: <b>${compNum(tot.sum)}</b>${tot.bonus?` · ارفاقی: <b>+${compNum(tot.bonus)}</b>`:""}</div>${lcdHtml("lcdc"+x.id,"درصد کل")}</div>`}).join("")}
  <button class="btn" id="cpub" style="width:100%;margin-bottom:10px">${m.pub?"لغو انتشار برای کاربران":"انتشار برای کاربران"}</button>
  <button class="btn sm alt" id="cdelm">حذف این ماه</button>`;
  users.forEach(x=>compLcd("lcdc"+x.id,compUserTotal(calc,x.items).T));
@@ -1427,18 +1430,26 @@ function renderCompMonthDetail(BK){
  };
  document.querySelectorAll("[data-cia]").forEach(b=>b.onclick=()=>{
   const uid=+b.dataset.cia,x=m.users.find(y=>y.id===uid);
-  const sel=document.querySelector(`[data-cis="${uid}"]`),pi=document.querySelector(`[data-cip="${uid}"]`),err=document.querySelector(`[data-cerr="${uid}"]`);
-  const ind=inds.find(i=>String(i.id)===sel.value),pts=parseNum(pi.value);
+  const sel=document.querySelector(`[data-cis="${uid}"]`),pi=document.querySelector(`[data-cip="${uid}"]`),ni=document.querySelector(`[data-cin="${uid}"]`),err=document.querySelector(`[data-cerr="${uid}"]`);
+  const isBonus=sel.value==="bonus";
+  const ind=isBonus?{id:"bonus",title:"ارفاقی مدیر واحد",bonus:true}:inds.find(i=>String(i.id)===sel.value),pts=parseNum(pi.value);
   if(!ind)return err.textContent="یک شاخص انتخاب کنید.";
   if(pts===null)return err.textContent="امتیاز را به‌صورت عدد وارد کنید.";
-  x.items.push({id:nid(),indId:ind.id,title:ind.title,pts});save("compMonths");renderCompMonthDetail(BK);
+  if(isBonus&&pts<=0)return err.textContent="امتیاز ارفاقی باید عددی مثبت باشد.";
+  x.items.push({id:nid(),indId:ind.id,title:ind.title,pts,note:ni.value.trim(),bonus:!!ind.bonus});
+  save("compMonths");renderCompMonthDetail(BK);
  });
  document.querySelectorAll("[data-cie]").forEach(b=>b.onclick=()=>{
   const [uid,iid]=b.dataset.cie.split(":").map(Number);
   const it=m.users.find(y=>y.id===uid).items.find(z=>z.id===iid);
-  const v=prompt("امتیاز جدید:",it.pts);if(v===null)return;
-  const n=parseNum(v);if(n===null)return toast("عدد معتبر نیست");
-  it.pts=n;save("compMonths");renderCompMonthDetail(BK);
+  openModal(`<h3>${esc(it.title)}</h3><input id="ce_p" inputmode="decimal" autocomplete="off" value="${it.pts}"><textarea id="ce_n" rows="3" placeholder="توضیح (اختیاری)">${esc(it.note||"")}</textarea><div class="err" id="ce_e"></div><button class="btn" id="ce_go" style="width:100%">ذخیره</button>`);
+  $("#ce_go").onclick=()=>{
+   const n=parseNum($("#ce_p").value);
+   if(n===null)return $("#ce_e").textContent="امتیاز را به‌صورت عدد وارد کنید.";
+   if(it.bonus&&n<=0)return $("#ce_e").textContent="امتیاز ارفاقی باید عددی مثبت باشد.";
+   it.pts=n;it.note=$("#ce_n").value.trim();
+   save("compMonths");closeModal();renderCompMonthDetail(BK);
+  };
  });
  document.querySelectorAll("[data-cid]").forEach(b=>b.onclick=()=>{
   const [uid,iid]=b.dataset.cid.split(":").map(Number);
@@ -1481,12 +1492,15 @@ function myCompDetail(id){
  const m=S.compMonths.find(x=>x.id==id&&x.pub),u=m&&m.users.find(x=>x.id==me.id);
  if(!m||!u){window.__myComp=undefined;return profile()}
  const c=compData(),calc=compCalc(m,c),tot=compUserTotal(calc,u.items),un=m.unit||{};
+ const ded=u.items.filter(x=>!x.bonus),bon=u.items.filter(x=>x.bonus);
+ const itRow=(it,plus)=>`<div class="frow"><div class="fi">${esc(it.title)}${it.note?`<div class="meta">${escn(it.note)}</div>`:""}</div><b>${plus?"+":""}${compNum(it.pts)}</b></div>`;
  $("#v").innerHTML=`${backBtn()}
  <div class="card"><h3>جبران خدمت ${compMonthName(m)}</h3><h3 style="font-size:14px;margin-top:6px">نتایج واحد</h3>
  ${compRow("تیراژ",compNum(un.tiraj))}${compRow("ضریب پورسانت",compPct(calc.P))}${compRow("درصد انحراف ضایعات",compPct(calc.W))}${compRow("درصد دوباره‌کاری",compPct(calc.R))}${compRow("درصد شکایت مشتری",compPct(calc.C))}${compRow("پایه",70)}${compRow("جمع واحد",calc.U===null?"—":compNum(calc.U))}</div>
  <div class="card"><h3>امتیازات کسر شده‌ی شما</h3>
- ${u.items.length?u.items.map(it=>compRow(esc(it.title),compNum(it.pts))).join(""):'<p class="meta">شاخصی برای شما ثبت نشده است.</p>'}
- ${compRow("جمع امتیاز کسر شده",compNum(tot.sum))}</div>
+ ${ded.length?ded.map(it=>itRow(it,false)).join(""):'<p class="meta">شاخصی برای شما ثبت نشده است.</p>'}
+ ${compRow("جمع امتیاز کسر شده",compNum(tot.sum))}
+ ${bon.length?`<h3 style="font-size:14px;margin-top:12px">امتیاز اضافه</h3>${bon.map(it=>itRow(it,true)).join("")}`:""}</div>
  ${lcdHtml("lcdmy","درصد کل شما")}`;
  compLcd("lcdmy",tot.T);
 }
