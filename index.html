@@ -571,7 +571,7 @@ function pushPlugin(){
 async function registerToken(){try{if(sb&&me&&window.__pushToken)await sb.rpc("register_device",{p_uid:me.id,p_token:window.__pushToken})}catch(e){}}
 function unregisterDevice(){try{if(sb&&window.__pushToken)sb.rpc("unregister_device",{p_token:window.__pushToken}).then(()=>{},()=>{})}catch(e){}}
 function openFromPush(d){try{if(!me||!d||!d.tab)return;window.__openGroup=d.gid?+d.gid:undefined;window.__shiftSub=d.sub||undefined;tab=d.tab;shell()}catch(e){}}
-const QC_BUILD="2026-11-14 18:00 UTC";
+const QC_BUILD="2026-11-14 20:00 UTC";
 function verCard(){
  const c=window.Capacitor;const native=!!(c&&c.isNativePlatform&&c.isNativePlatform());
  const host=location.host||"";
@@ -1689,7 +1689,7 @@ function renderAdminAnn(BK2){
 function renderAdminOcc(BK2){
  const oc=S.occasion;
  $("#v").innerHTML=`${BK2}<div class="card"><h3>مدیریت مناسبت‌ها</h3>
- ${oc?`<img src="${oc.image}" style="width:100%;border-radius:8px;margin-bottom:8px;max-height:200px;object-fit:cover"><p class="meta">${esc(oc.caption)}</p><button class="btn sm alt" id="ocd">حذف مناسبت فعلی</button>`:'<p class="meta">مناسبتی ثبت نشده است.</p>'}
+ ${oc?`<img src="${oc.image}" style="width:100%;border-radius:8px;margin-bottom:8px;max-height:200px;object-fit:cover"><p class="meta" style="line-height:1.9">${escn(oc.caption)}</p><button class="btn sm alt" id="ocd">حذف مناسبت فعلی</button>`:'<p class="meta">مناسبتی ثبت نشده است.</p>'}
  <h3 style="margin-top:16px">مناسبت جدید (جایگزین فعلی)</h3>
  <input type="file" id="oci" accept="image/*" multiple><textarea id="occ" rows="2" placeholder="کپشن"></textarea><div class="err" id="oce"></div><button class="btn sm" id="ocb">انتشار</button></div>`;
  $("#abk2").onclick=()=>{window.__adminHomeSub=null;admin()};
