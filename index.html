@@ -571,7 +571,7 @@ function pushPlugin(){
 async function registerToken(){try{if(sb&&me&&window.__pushToken)await sb.rpc("register_device",{p_uid:me.id,p_token:window.__pushToken})}catch(e){}}
 function unregisterDevice(){try{if(sb&&window.__pushToken)sb.rpc("unregister_device",{p_token:window.__pushToken}).then(()=>{},()=>{})}catch(e){}}
 function openFromPush(d){try{if(!me||!d||!d.tab)return;window.__openGroup=d.gid?+d.gid:undefined;window.__shiftSub=d.sub||undefined;tab=d.tab;shell()}catch(e){}}
-const QC_BUILD="2026-11-14 14:00 UTC";
+const QC_BUILD="2026-11-14 18:00 UTC";
 function verCard(){
  const c=window.Capacitor;const native=!!(c&&c.isNativePlatform&&c.isNativePlatform());
  const host=location.host||"";
@@ -664,19 +664,71 @@ function announce(){
  const la=S.announcement;
  $("#v").innerHTML=`<div class="card"><h3>اعلانات</h3>${la?`<p>${escn(la.text)}</p><div class="meta">${esc(uname(la.by))} · ${fd(la.at,1)}</div>`:'<p class="meta">اعلانی ثبت نشده است.</p>'}</div>`;
 }
+function ocImages(oc){return oc.images&&oc.images.length?oc.images:(oc.image?[oc.image]:[])}
+function ocFrame(oc){
+ const imgs=ocImages(oc);
+ if(!imgs.length)return "";
+ if(window.__ocIdx==null||window.__ocIdx>=imgs.length)window.__ocIdx=0;
+ return `<div class="igframe" id="ocframe"><img src="${imgs[window.__ocIdx]}" draggable="false">${imgs.length>1?`<div class="igdots">${imgs.map((_,i)=>`<span class="${i==window.__ocIdx?"on":""}"></span>`).join("")}</div>`:""}</div>`;
+}
+function ocSwipe(oc){
+ const imgs=ocImages(oc),frame=document.getElementById("ocframe");
+ if(!frame||imgs.length<2)return;
+ const curImg=frame.querySelector("img");
+ curImg.style.animation="none";curImg.style.position="relative";
+ let sx=null,incoming=null,incomingDir=null;
+ frame.style.touchAction="pan-y";
+ const idx=()=>window.__ocIdx||0;
+ function ensureIncoming(dir){
+  if(incoming&&incomingDir===dir)return incoming;
+  if(incoming)incoming.remove();
+  const nIdx=dir=="next"?(idx()+1)%imgs.length:(idx()-1+imgs.length)%imgs.length;
+  incoming=document.createElement("img");
+  incoming.src=imgs[nIdx];incoming.draggable=false;
+  incoming.style.cssText="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;animation:none;transition:none";
+  incoming.style.transform=dir=="next"?"translateX(100%)":"translateX(-100%)";
+  frame.appendChild(incoming);incomingDir=dir;return incoming;
+ }
+ frame.addEventListener("pointerdown",e=>{sx=e.clientX;curImg.style.transition="none";try{frame.setPointerCapture(e.pointerId)}catch(err){}});
+ frame.addEventListener("pointermove",e=>{
+  if(sx==null)return;
+  const dx=e.clientX-sx,dir=dx<0?"next":"prev",img2=ensureIncoming(dir);
+  curImg.style.transform=`translateX(${dx}px)`;
+  img2.style.transform=dir=="next"?`translateX(calc(100% + ${dx}px))`:`translateX(calc(-100% + ${dx}px))`;
+ });
+ function finish(dx){
+  const dir=incomingDir,was=sx;sx=null;
+  if(was==null)return;
+  const threshold=frame.clientWidth*0.25;
+  curImg.style.transition="transform .2s ease";
+  if(incoming)incoming.style.transition="transform .2s ease";
+  if(dir&&Math.abs(dx)>threshold){
+   curImg.style.transform=dir=="next"?"translateX(-100%)":"translateX(100%)";
+   if(incoming)incoming.style.transform="translateX(0)";
+   window.__ocIdx=dir=="next"?(idx()+1)%imgs.length:(idx()-1+imgs.length)%imgs.length;
+   setTimeout(()=>occasion(),200);
+  }else{
+   curImg.style.transform="translateX(0)";
+   if(incoming)incoming.style.transform=dir=="next"?"translateX(100%)":"translateX(-100%)";
+  }
+ }
+ frame.addEventListener("pointerup",e=>finish(e.clientX-(sx===null?e.clientX:sx)));
+ frame.addEventListener("pointercancel",()=>finish(0));
+}
 function occasion(){
  const oc=S.occasion;
  if(!oc){$("#v").innerHTML='<div class="card"><p class="meta">مناسبتی ثبت نشده است.</p></div>';return}
  const liked=(oc.likes||[]).includes(me.id);
  $("#v").innerHTML=`<div class="card" style="padding:0;overflow:hidden">
  <div style="display:flex;gap:8px;align-items:center;padding:10px 12px">${avatar(oc.by)}<b>${esc(uname(oc.by))}</b><span class="meta">${fd(oc.at,1)}</span></div>
- ${oc.image?`<div class="igframe"><img src="${oc.image}"></div>`:""}
+ ${ocFrame(oc)}
  <div style="padding:10px 12px">
  <button type="button" class="likebtn ${liked?"on":""}" id="oclike" aria-label="لایک">${HEART_SVG}</button> <a href="#" id="oclikers" class="meta" style="color:inherit">${(oc.likes||[]).length} لایک</a>
  <p>${escn(oc.caption)}</p>
  ${(oc.comments||[]).map(c=>`<div style="margin-top:8px;display:flex;gap:8px">${avatar(c.by)}<div><b style="font-size:13px">${esc(uname(c.by))}</b><div style="font-size:13px">${escn(c.text)}</div><div class="meta">${fd(c.at,1)}</div></div></div>`).join("")}
  <div class="row" style="margin-top:10px"><input id="occm" placeholder="نظر شما..."><button class="btn sm" id="occb">ارسال</button></div>
  </div></div>`;
+ ocSwipe(oc);
  $("#oclike").onclick=()=>{oc.likes=oc.likes||[];const i=oc.likes.indexOf(me.id);if(i>-1)oc.likes.splice(i,1);else oc.likes.push(me.id);save("occasion");occasion()};
  $("#oclikers").onclick=(e)=>{e.preventDefault();const ids=(oc.likes||[]);openModal(`<h3>پسندیده‌شده توسط</h3>${ids.length?ids.map(uid=>`<div style="padding:7px 0;display:flex;align-items:center;gap:8px">${avatar(uid)}<span>${esc(uname(uid))}</span></div>`).join(""):'<p class="meta">هنوز کسی لایک نکرده است.</p>'}`)};
  $("#occb").onclick=()=>{const t=$("#occm").value.trim();if(!t)return;oc.comments=oc.comments||[];oc.comments.push({id:nid(),by:me.id,text:t,at:Date.now()});save("occasion");occasion()};
@@ -1639,13 +1691,13 @@ function renderAdminOcc(BK2){
  $("#v").innerHTML=`${BK2}<div class="card"><h3>مدیریت مناسبت‌ها</h3>
  ${oc?`<img src="${oc.image}" style="width:100%;border-radius:8px;margin-bottom:8px;max-height:200px;object-fit:cover"><p class="meta">${esc(oc.caption)}</p><button class="btn sm alt" id="ocd">حذف مناسبت فعلی</button>`:'<p class="meta">مناسبتی ثبت نشده است.</p>'}
  <h3 style="margin-top:16px">مناسبت جدید (جایگزین فعلی)</h3>
- <input type="file" id="oci" accept="image/*"><textarea id="occ" rows="2" placeholder="کپشن"></textarea><div class="err" id="oce"></div><button class="btn sm" id="ocb">انتشار</button></div>`;
+ <input type="file" id="oci" accept="image/*" multiple><textarea id="occ" rows="2" placeholder="کپشن"></textarea><div class="err" id="oce"></div><button class="btn sm" id="ocb">انتشار</button></div>`;
  $("#abk2").onclick=()=>{window.__adminHomeSub=null;admin()};
  const dbtn=document.getElementById("ocd");if(dbtn)dbtn.onclick=()=>{S.occasion=null;save("occasion");renderAdminOcc(BK2)};
- $("#ocb").onclick=async()=>{const f=$("#oci").files[0];const cap=$("#occ").value.trim();
+ $("#ocb").onclick=async()=>{const files=[...$("#oci").files].slice(0,10),f=files[0];const cap=$("#occ").value.trim();
   if(!f)return $("#oce").textContent="یک تصویر انتخاب کنید.";
-  const image=await uploadImage(f);
-  S.occasion={image,caption:cap,by:me.id,at:Date.now(),likes:[],comments:[]};notify("all","مناسبت جدید",cap||"مناسبت جدید ثبت شد",{tab:"occasion"});save("occasion");renderAdminOcc(BK2)};
+  const images=await Promise.all(files.map(x=>uploadImage(x,{compress:true})));const image=images[0];window.__ocIdx=0;
+  S.occasion={image,images,caption:cap,by:me.id,at:Date.now(),likes:[],comments:[]};notify("all","مناسبت جدید",cap||"مناسبت جدید ثبت شد",{tab:"occasion"});save("occasion");renderAdminOcc(BK2)};
 }
 function postKey(p){return p.ord!==undefined?p.ord:p.at}
 function postsOrdered(){return S.posts.slice().sort((a,b)=>postKey(b)-postKey(a))}
