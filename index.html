@@ -571,7 +571,7 @@ function pushPlugin(){
 async function registerToken(){try{if(sb&&me&&window.__pushToken)await sb.rpc("register_device",{p_uid:me.id,p_token:window.__pushToken})}catch(e){}}
 function unregisterDevice(){try{if(sb&&window.__pushToken)sb.rpc("unregister_device",{p_token:window.__pushToken}).then(()=>{},()=>{})}catch(e){}}
 function openFromPush(d){try{if(!me||!d||!d.tab)return;window.__openGroup=d.gid?+d.gid:undefined;window.__shiftSub=d.sub||undefined;tab=d.tab;shell()}catch(e){}}
-const QC_BUILD="2026-11-02 10:00 UTC";
+const QC_BUILD="2026-11-14 10:00 UTC";
 function verCard(){
  const c=window.Capacitor;const native=!!(c&&c.isNativePlatform&&c.isNativePlatform());
  const host=location.host||"";
@@ -1359,13 +1359,13 @@ function compCalc(m,c){
  const U=(W!==null&&R!==null&&C!==null)?Number((W+R+C+70).toFixed(6)):null;
  return {P,W,R,C,U};
 }
-function compUserTotal(calc,items){
+function compUserTotal(calc,items,exempt){
  const sum=Number(items.filter(x=>!x.bonus).reduce((a,x)=>a+x.pts,0).toFixed(6));
  const bonus=Number(items.filter(x=>x.bonus).reduce((a,x)=>a+x.pts,0).toFixed(6));
- const T=(calc.U!==null&&calc.P!==null)?(calc.U-sum+bonus)/100*calc.P:null;
+ const T=exempt?0:((calc.U!==null&&calc.P!==null)?(calc.U-sum+bonus)/100*calc.P:null);
  return {sum,bonus,T};
 }
-function compLcd(id,T){lcdSet(id,T===null?"0":fmtResult(Number(T.toPrecision(6))),T===null?"محاسبه کامل نیست":"٪ درصد کل")}
+function compLcd(id,T,ex){lcdSet(id,T===null?"0":fmtResult(Number(T.toPrecision(6))),ex?"مشمول بهره‌وری نیست":(T===null?"محاسبه کامل نیست":"٪ درصد کل"))}
 const compMiss=(val,res)=>val===null||val===undefined?"—":(res===null?"بازه‌ای تعریف نشده":compPct(res));
 const compRow=(l,v)=>`<div class="frow"><div class="fi">${l}</div><b>${v}</b></div>`;
 
@@ -1383,7 +1383,7 @@ function renderCompMonthly(BK){
   $("#cmgo").onclick=()=>{
    const y=+$("#cmy").value,mo=+$("#cmm").value;
    if(S.compMonths.some(x=>x.y===y&&x.m===mo))return $("#cme").textContent="برای این ماه قبلاً ثبت ساخته شده است.";
-   const rec={id:nid(),y,m:mo,unit:{tiraj:null,waste:null,rework:null,complaints:null},users:S.users.filter(u=>u.on).map(u=>({id:u.id,items:[]})),pub:false,by:me.id,at:Date.now()};
+   const rec={id:nid(),y,m:mo,unit:{tiraj:null,waste:null,rework:null,complaints:null},users:S.users.filter(u=>u.on&&u.role!=="manager").map(u=>({id:u.id,items:[]})),pub:false,by:me.id,at:Date.now()};
    S.compMonths.push(rec);save("compMonths");closeModal();window.__compMonth=rec.id;renderCompMonthly(BK);
   };
  };
@@ -1391,9 +1391,12 @@ function renderCompMonthly(BK){
 function renderCompMonthDetail(BK){
  const m=S.compMonths.find(x=>x.id==window.__compMonth);
  if(!m){window.__compMonth=undefined;return renderCompMonthly(BK)}
- let added=false;
- S.users.filter(u=>u.on).forEach(u=>{if(!m.users.some(x=>x.id==u.id)){m.users.push({id:u.id,items:[]});added=true}});
- if(added)save("compMonths");
+ let changed=false;
+ const nb=m.users.length;
+ m.users=m.users.filter(x=>{const u=S.users.find(z=>z.id==x.id);return !(u&&u.role==="manager")});
+ if(m.users.length!==nb)changed=true;
+ S.users.filter(u=>u.on&&u.role!=="manager").forEach(u=>{if(!m.users.some(x=>x.id==u.id)){m.users.push({id:u.id,items:[]});changed=true}});
+ if(changed)save("compMonths");
  const c=compData(),calc=compCalc(m,c),u0=m.unit||{},inds=c.indicators||[];
  const vv=x=>x===null||x===undefined?"":x;
  const users=m.users.slice().sort((a,b)=>String(uname(a.id)).localeCompare(String(uname(b.id)),"fa"));
@@ -1405,7 +1408,8 @@ function renderCompMonthDetail(BK){
  <div class="fld"><label>شکایت مشتری (تعداد)</label><input id="cu_c" inputmode="numeric" autocomplete="off" value="${vv(u0.complaints)}"></div>
  <div class="err" id="cuerr"></div><button class="btn sm" id="cusave">ذخیره و محاسبه</button>
  <div style="margin-top:12px">${compRow("ضریب پورسانت (از تیراژ)",compMiss(u0.tiraj,calc.P))}${compRow("درصد انحراف ضایعات",compMiss(u0.waste,calc.W))}${compRow("درصد دوباره‌کاری",compMiss(u0.rework,calc.R))}${compRow("درصد شکایت مشتری",compMiss(u0.complaints,calc.C))}${compRow("پایه",70)}${compRow("جمع واحد",calc.U===null?"—":compNum(calc.U))}</div></div>
- ${users.map(x=>{const tot=compUserTotal(calc,x.items);return `<div class="card"><div class="row" style="align-items:center;flex-wrap:nowrap;border:0">${avatar(x.id,30)}<b style="flex:1;min-width:0">${esc(uname(x.id))}</b></div>
+ ${users.map(x=>{const tot=compUserTotal(calc,x.items,x.exempt);return `<div class="card"><div class="row" style="align-items:center;flex-wrap:nowrap;border:0">${avatar(x.id,30)}<b style="flex:1;min-width:0">${esc(uname(x.id))}</b></div>
+ <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:8px;cursor:pointer"><input type="checkbox" data-cex="${x.id}" ${x.exempt?"checked":""} style="width:auto;margin:0"> مشمول بهره‌وری نمی‌شود</label>
  ${x.items.length?x.items.map(it=>`<div class="frow"><div class="fi">${esc(it.title)}: <b>${it.bonus?"+":""}${compNum(it.pts)}</b> امتیاز${it.note?`<div class="meta">${escn(it.note)}</div>`:""}</div><button class="btn sm alt" data-cie="${x.id}:${it.id}" style="min-width:0">ویرایش</button><button class="btn sm alt" data-cid="${x.id}:${it.id}" style="min-width:0">حذف</button></div>`).join(""):'<p class="meta">شاخصی انتخاب نشده است.</p>'}
  <div class="row" style="flex-wrap:nowrap;align-items:center;border:0"><select data-cis="${x.id}" style="min-width:0"><option value="">شاخص…</option>${x.items.some(it=>it.bonus)?"":'<option value="bonus">ارفاقی مدیر واحد (امتیاز مثبت)</option>'}${inds.filter(i=>!x.items.some(it=>!it.bonus&&it.indId===i.id)).map(i=>`<option value="${i.id}">${esc(i.title)}</option>`).join("")}</select><input data-cip="${x.id}" inputmode="decimal" autocomplete="off" placeholder="امتیاز" style="min-width:0;max-width:90px"></div>
  <div class="row" style="flex-wrap:nowrap;align-items:center;border:0"><input data-cin="${x.id}" autocomplete="off" placeholder="توضیح (اختیاری)" style="min-width:0"><button class="btn sm" data-cia="${x.id}" style="flex:0 0 auto;min-width:0">افزودن</button></div>
@@ -1413,7 +1417,7 @@ function renderCompMonthDetail(BK){
  <div class="meta">جمع امتیاز کسر شده: <b>${compNum(tot.sum)}</b>${tot.bonus?` · ارفاقی: <b>+${compNum(tot.bonus)}</b>`:""}</div>${lcdHtml("lcdc"+x.id,"درصد کل")}</div>`}).join("")}
  <button class="btn" id="cpub" style="width:100%;margin-bottom:10px">${m.pub?"لغو انتشار برای کاربران":"انتشار برای کاربران"}</button>
  <button class="btn sm alt" id="cdelm">حذف این ماه</button>`;
- users.forEach(x=>compLcd("lcdc"+x.id,compUserTotal(calc,x.items).T));
+ users.forEach(x=>compLcd("lcdc"+x.id,compUserTotal(calc,x.items,x.exempt).T,x.exempt));
  $("#abk").onclick=()=>{window.__compMonth=undefined;admin()};
  document.getElementById("cusave").onclick=()=>{
   const err=t=>{document.getElementById("cuerr").textContent=t};
@@ -1428,6 +1432,10 @@ function renderCompMonthDetail(BK){
   if(vals.complaints!==null&&(vals.complaints<0||Math.floor(vals.complaints)!==vals.complaints))return err("تعداد شکایت باید عدد صحیح (صفر یا بیشتر) باشد.");
   m.unit=vals;save("compMonths");renderCompMonthDetail(BK);
  };
+ document.querySelectorAll("[data-cex]").forEach(ch=>ch.onchange=()=>{
+  const x=m.users.find(y=>y.id===+ch.dataset.cex);
+  x.exempt=ch.checked;save("compMonths");renderCompMonthDetail(BK);
+ });
  document.querySelectorAll("[data-cia]").forEach(b=>b.onclick=()=>{
   const uid=+b.dataset.cia,x=m.users.find(y=>y.id===uid);
   const sel=document.querySelector(`[data-cis="${uid}"]`),pi=document.querySelector(`[data-cip="${uid}"]`),ni=document.querySelector(`[data-cin="${uid}"]`),err=document.querySelector(`[data-cerr="${uid}"]`);
@@ -1481,7 +1489,7 @@ function myCompMonths(){
 function myCompCard(){
  const list=myCompMonths(),c=compData();
  const html=`<div class="card"><h3>جبران خدمت ماهیانه</h3>${list.length?list.map(m=>{
-  const u=m.users.find(x=>x.id==me.id),t=compUserTotal(compCalc(m,c),u.items).T;
+  const u=m.users.find(x=>x.id==me.id),t=compUserTotal(compCalc(m,c),u.items,u.exempt).T;
   return `<div class="frow" data-mycomp="${m.id}" style="cursor:pointer"><div class="fi"><b>${compMonthName(m)}</b></div><span class="tag">${t===null?"—":fmtResult(Number(t.toPrecision(6)))+"٪"}</span></div>`;
  }).join(""):'<p class="meta">هنوز نتیجه‌ای منتشر نشده است.</p>'}</div>`;
  const first=document.getElementById("v").firstElementChild;
@@ -1491,18 +1499,19 @@ function myCompCard(){
 function myCompDetail(id){
  const m=S.compMonths.find(x=>x.id==id&&x.pub),u=m&&m.users.find(x=>x.id==me.id);
  if(!m||!u){window.__myComp=undefined;return profile()}
- const c=compData(),calc=compCalc(m,c),tot=compUserTotal(calc,u.items),un=m.unit||{};
+ const c=compData(),calc=compCalc(m,c),tot=compUserTotal(calc,u.items,u.exempt),un=m.unit||{};
  const ded=u.items.filter(x=>!x.bonus),bon=u.items.filter(x=>x.bonus);
  const itRow=(it,plus)=>`<div class="frow"><div class="fi">${esc(it.title)}${it.note?`<div class="meta">${escn(it.note)}</div>`:""}</div><b>${plus?"+":""}${compNum(it.pts)}</b></div>`;
  $("#v").innerHTML=`${backBtn()}
  <div class="card"><h3>جبران خدمت ${compMonthName(m)}</h3><h3 style="font-size:14px;margin-top:6px">نتایج واحد</h3>
  ${compRow("تیراژ",compNum(un.tiraj))}${compRow("ضریب پورسانت",compPct(calc.P))}${compRow("درصد انحراف ضایعات",compPct(calc.W))}${compRow("درصد دوباره‌کاری",compPct(calc.R))}${compRow("درصد شکایت مشتری",compPct(calc.C))}${compRow("پایه",70)}${compRow("جمع واحد",calc.U===null?"—":compNum(calc.U))}</div>
  <div class="card"><h3>امتیازات کسر شده‌ی شما</h3>
+ ${u.exempt?'<p class="meta" style="color:var(--warn)">این ماه مشمول بهره‌وری نبوده‌اید؛ درصد کل صفر محاسبه می‌شود.</p>':""}
  ${ded.length?ded.map(it=>itRow(it,false)).join(""):'<p class="meta">شاخصی برای شما ثبت نشده است.</p>'}
  ${compRow("جمع امتیاز کسر شده",compNum(tot.sum))}
  ${bon.length?`<h3 style="font-size:14px;margin-top:12px">امتیاز اضافه</h3>${bon.map(it=>itRow(it,true)).join("")}`:""}</div>
  ${lcdHtml("lcdmy","درصد کل شما")}`;
- compLcd("lcdmy",tot.T);
+ compLcd("lcdmy",tot.T,u.exempt);
 }
 function compIndicators(BK){
  const c=compData();c.indicators=c.indicators||[];
