@@ -571,7 +571,7 @@ function pushPlugin(){
 async function registerToken(){try{if(sb&&me&&window.__pushToken)await sb.rpc("register_device",{p_uid:me.id,p_token:window.__pushToken})}catch(e){}}
 function unregisterDevice(){try{if(sb&&window.__pushToken)sb.rpc("unregister_device",{p_token:window.__pushToken}).then(()=>{},()=>{})}catch(e){}}
 function openFromPush(d){try{if(!me||!d||!d.tab)return;window.__openGroup=d.gid?+d.gid:undefined;window.__shiftSub=d.sub||undefined;tab=d.tab;shell()}catch(e){}}
-const QC_BUILD="2026-11-14 10:00 UTC";
+const QC_BUILD="2026-11-14 14:00 UTC";
 function verCard(){
  const c=window.Capacitor;const native=!!(c&&c.isNativePlatform&&c.isNativePlatform());
  const host=location.host||"";
@@ -1345,6 +1345,21 @@ S.compMonths=S.compMonths||[];
 if(!KEYS.includes("compMonths"))KEYS.push("compMonths");
 const compMonthName=m=>JMONTHS[m.m-1]+" "+m.y;
 const compNum=v=>v===null||v===undefined?"—":fmtResult(Number(Number(v).toPrecision(8)));
+const g3=v=>{
+ if(v===null||v===undefined||v==="")return "—";
+ const n=Number(v);
+ if(!Number.isFinite(n))return String(v);
+ const p=String(n).split(".");
+ return p[0].replace(/\B(?=(\d{3})+(?!\d))/g,",")+(p[1]?"."+p[1]:"");
+};
+function compTirFmt(el){
+ const fromEnd=el.value.length-(el.selectionStart||0);
+ const t=el.value.replace(/[۰-۹]/g,d=>"۰۱۲۳۴۵۶۷۸۹".indexOf(d)).replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d)).replace(/[^0-9.]/g,"");
+ const parts=t.split(".");
+ el.value=parts[0].replace(/\B(?=(\d{3})+(?!\d))/g,",")+(parts.length>1?"."+parts.slice(1).join(""):"");
+ const np=Math.max(0,el.value.length-fromEnd);
+ try{el.setSelectionRange(np,np)}catch(e){}
+}
 const compPct=v=>v===null||v===undefined?"—":compNum(v)+"٪";
 function compCalc(m,c){
  const u=m.unit||{};
@@ -1402,7 +1417,7 @@ function renderCompMonthDetail(BK){
  const users=m.users.slice().sort((a,b)=>String(uname(a.id)).localeCompare(String(uname(b.id)),"fa"));
  $("#v").innerHTML=`${BK}
  <div class="card"><h3>${compMonthName(m)} — نتایج واحد</h3>
- <div class="fld"><label>تیراژ</label><input id="cu_t" inputmode="decimal" autocomplete="off" value="${vv(u0.tiraj)}"></div>
+ <div class="fld"><label>تیراژ</label><input id="cu_t" inputmode="decimal" autocomplete="off" value="${vv(u0.tiraj)===""?"":g3(u0.tiraj)}" oninput="compTirFmt(this)"></div>
  <div class="fld"><label>انحراف ضایعات</label><input id="cu_w" inputmode="decimal" autocomplete="off" value="${vv(u0.waste)}"></div>
  <div class="fld"><label>دوباره‌کاری</label><input id="cu_r" inputmode="decimal" autocomplete="off" value="${vv(u0.rework)}"></div>
  <div class="fld"><label>شکایت مشتری (تعداد)</label><input id="cu_c" inputmode="numeric" autocomplete="off" value="${vv(u0.complaints)}"></div>
@@ -1423,7 +1438,7 @@ function renderCompMonthDetail(BK){
   const err=t=>{document.getElementById("cuerr").textContent=t};
   const ids={tiraj:"cu_t",waste:"cu_w",rework:"cu_r",complaints:"cu_c"},vals={};
   for(const k in ids){
-   const t=document.getElementById(ids[k]).value.trim();
+   let t=document.getElementById(ids[k]).value.trim();if(k==="tiraj")t=t.replace(/,/g,"");
    if(t===""){vals[k]=null;continue}
    const n=parseNum(t);
    if(n===null)return err("همه‌ی مقادیر باید عدد باشند.");
@@ -1504,7 +1519,7 @@ function myCompDetail(id){
  const itRow=(it,plus)=>`<div class="frow"><div class="fi">${esc(it.title)}${it.note?`<div class="meta">${escn(it.note)}</div>`:""}</div><b>${plus?"+":""}${compNum(it.pts)}</b></div>`;
  $("#v").innerHTML=`${backBtn()}
  <div class="card"><h3>جبران خدمت ${compMonthName(m)}</h3><h3 style="font-size:14px;margin-top:6px">نتایج واحد</h3>
- ${compRow("تیراژ",compNum(un.tiraj))}${compRow("ضریب پورسانت",compPct(calc.P))}${compRow("درصد انحراف ضایعات",compPct(calc.W))}${compRow("درصد دوباره‌کاری",compPct(calc.R))}${compRow("درصد شکایت مشتری",compPct(calc.C))}${compRow("پایه",70)}${compRow("جمع واحد",calc.U===null?"—":compNum(calc.U))}</div>
+ ${compRow("تیراژ",g3(un.tiraj))}${compRow("ضریب پورسانت",compPct(calc.P))}${compRow("درصد انحراف ضایعات",compPct(calc.W))}${compRow("درصد دوباره‌کاری",compPct(calc.R))}${compRow("درصد شکایت مشتری",compPct(calc.C))}${compRow("پایه",70)}${compRow("جمع واحد",calc.U===null?"—":compNum(calc.U))}</div>
  <div class="card"><h3>امتیازات کسر شده‌ی شما</h3>
  ${u.exempt?'<p class="meta" style="color:var(--warn)">این ماه مشمول بهره‌وری نبوده‌اید؛ درصد کل صفر محاسبه می‌شود.</p>':""}
  ${ded.length?ded.map(it=>itRow(it,false)).join(""):'<p class="meta">شاخصی برای شما ثبت نشده است.</p>'}
@@ -1547,7 +1562,7 @@ function renderCompBase(BK){
   return `<div class="card"><h3>${cfg.title}</h3><p class="meta" style="line-height:1.9">${cfg.hint}</p>
   <div class="row" style="flex-wrap:nowrap;align-items:center">${inputs}<input data-f="${cfg.k}:pct" inputmode="decimal" autocomplete="off" placeholder="درصد" value="${e?e.pct:""}" style="min-width:0"><button class="btn sm" data-add="${cfg.k}" style="flex:0 0 auto;min-width:0">${e?"ذخیره":"افزودن"}</button></div>
   <div class="err" data-err="${cfg.k}"></div>
-  ${list.length?list.map(r=>`<div class="frow"><div class="fi">${cfg.range?`از <b>${r.from}</b> تا <b>${toTxt(r)}</b>`:`<b>${r.count}</b> شکایت`} ← <b>${r.pct}</b> درصد</div><button class="btn sm alt" data-edit="${cfg.k}:${r.id}" style="min-width:0">ویرایش</button><button class="btn sm alt" data-del="${cfg.k}:${r.id}" style="min-width:0">حذف</button></div>`).join(""):'<p class="meta">هنوز موردی ثبت نشده است.</p>'}</div>`;
+  ${list.length?list.map(r=>`<div class="frow"><div class="fi">${cfg.range?`از <b>${cfg.k==="commission"?g3(r.from):r.from}</b> تا <b>${cfg.k==="commission"?g3(toTxt(r)):toTxt(r)}</b>`:`<b>${r.count}</b> شکایت`} ← <b>${r.pct}</b> درصد</div><button class="btn sm alt" data-edit="${cfg.k}:${r.id}" style="min-width:0">ویرایش</button><button class="btn sm alt" data-del="${cfg.k}:${r.id}" style="min-width:0">حذف</button></div>`).join(""):'<p class="meta">هنوز موردی ثبت نشده است.</p>'}</div>`;
  }).join("");
  $("#abk").onclick=()=>{window.__indEdit=undefined;window.__compEdit=undefined;window.__compSub=undefined;admin()};
  compIndicators(BK);
