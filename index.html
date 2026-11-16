@@ -571,7 +571,7 @@ function pushPlugin(){
 async function registerToken(){try{if(sb&&me&&window.__pushToken)await sb.rpc("register_device",{p_uid:me.id,p_token:window.__pushToken})}catch(e){}}
 function unregisterDevice(){try{if(sb&&window.__pushToken)sb.rpc("unregister_device",{p_token:window.__pushToken}).then(()=>{},()=>{})}catch(e){}}
 function openFromPush(d){try{if(!me||!d||!d.tab)return;window.__openGroup=d.gid?+d.gid:undefined;window.__shiftSub=d.sub||undefined;tab=d.tab;shell()}catch(e){}}
-const QC_BUILD="2026-11-14 20:00 UTC";
+const QC_BUILD="2026-11-15 10:00 UTC";
 function verCard(){
  const c=window.Capacitor;const native=!!(c&&c.isNativePlatform&&c.isNativePlatform());
  const host=location.host||"";
@@ -2349,9 +2349,10 @@ function complaints(){
    if(!S.complaintSeen[c.id+":"+me.id]){S.complaintSeen[c.id+":"+me.id]=true;save("complaintSeen")}
    $("#v").innerHTML=`<button class="btn sm alt" id="cxback" style="margin-bottom:12px">→ بازگشت</button>
    <div class="card"><h3>${esc(c.subject)}</h3><p>${escn(c.text)}</p>
-   ${c.images&&c.images.length?`<div style="display:flex;gap:6px;overflow-x:auto">${c.images.map(im=>`<img src="${im}" style="width:70%;flex:0 0 auto;max-height:220px;object-fit:cover;border-radius:8px">`).join("")}</div>`:""}
+   ${c.images&&c.images.length?`<div class="pimgs">${c.images.map((im,i)=>`<div class="pimg" data-cmi="${i}" style="cursor:pointer"><img src="${im}" alt="" loading="lazy" onerror="this.classList.add('bad')"></div>`).join("")}</div>`:""}
    <div class="meta">${esc(uname(c.by))} · ${fd(c.at,1)}</div></div>`;
    $("#cxback").onclick=()=>{window.__openComplaint=null;complaints()};
+   document.querySelectorAll("[data-cmi]").forEach(el=>el.onclick=()=>openMediaViewer(c.images.map(u=>({url:u,by:c.by,at:c.at})),+el.dataset.cmi));
    return;
   }
   window.__openComplaint=null;
