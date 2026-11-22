@@ -498,7 +498,7 @@ async function boot(){
  S.perms=S.perms||{};if(!S.perms.moist)S.perms.moist=["manager","supervisor","senior"];if(!S.perms.moistconfirm)S.perms.moistconfirm=["manager","supervisor"];
  let savedUid=null;
  try{savedUid=localStorage.getItem("qcuid")}catch(e){}
- if(savedUid){const u=S.users.find(x=>x.id==+savedUid);if(u&&u.on&&!u.locked){me=u;tab="home";return shell()}}
+ if(savedUid){const u=S.users.find(x=>x.id==+savedUid);if(u&&u.on&&!u.locked){me=u;tab="home";if(!u.lastLogin||Date.now()-u.lastLogin>900000){u.lastLogin=Date.now();save(["users"],true)}return shell()}}
  login();
 }
 const $=s=>document.querySelector(s);
@@ -532,6 +532,7 @@ function login(){
    save(["users"]);return $("#le").textContent="نام کاربری یا رمز عبور اشتباه است.";
   }
   u.failedAttempts=0;save(["users"]);
+  u.lastLogin=Date.now();save(["users"],true);
   me=u;tab="home";try{localStorage.setItem("qcuid",u.id)}catch(e){}shell()};
  $("#lforgot").onclick=(e)=>{e.preventDefault();openForgotBox()};
 }
@@ -571,7 +572,7 @@ function pushPlugin(){
 async function registerToken(){try{if(sb&&me&&window.__pushToken)await sb.rpc("register_device",{p_uid:me.id,p_token:window.__pushToken})}catch(e){}}
 function unregisterDevice(){try{if(sb&&window.__pushToken)sb.rpc("unregister_device",{p_token:window.__pushToken}).then(()=>{},()=>{})}catch(e){}}
 function openFromPush(d){try{if(!me||!d||!d.tab)return;window.__openGroup=d.gid?+d.gid:undefined;window.__shiftSub=d.sub||undefined;tab=d.tab;shell()}catch(e){}}
-const QC_BUILD="2026-11-15 10:00 UTC";
+const QC_BUILD="2026-11-15 14:00 UTC";
 function verCard(){
  const c=window.Capacitor;const native=!!(c&&c.isNativePlatform&&c.isNativePlatform());
  const host=location.host||"";
@@ -1297,7 +1298,7 @@ function renderAdminBackup(BK){
 }
 function renderAdminUsers(BK){
  $("#v").innerHTML=`${BK}<div class="card"><h3>کاربران</h3>${S.users.map(u=>{const ed=window.__editUser==u.id;return `<div class="card" style="margin-bottom:8px">
- <div class="row" style="align-items:center"><span><b>${esc(u.name)}</b> <span class="meta">${esc(u.user)} · ${ROLES[u.role]}</span></span><span><span class="tag ${u.on?"ok":"wa"}">${u.on?"فعال":"غیرفعال"}</span> ${u.locked?'<span class="tag wa">قفل</span>':""} <button class="btn sm alt" data-ed="${u.id}">${ed?"بستن":"ویرایش"}</button> ${u.id!=me.id?`<button class="btn sm alt" data-tg="${u.id}">${u.on?"غیرفعال کن":"فعال کن"}</button>`:""} ${u.locked?`<button class="btn sm alt" data-ul="${u.id}">باز کردن قفل</button>`:""}</span></div>
+ <div class="row" style="align-items:center"><span><b>${esc(u.name)}</b> <span class="meta">${esc(u.user)} · ${ROLES[u.role]}</span><br><span class="meta">آخرین ورود: ${u.lastLogin?fd(u.lastLogin,1):"ثبت نشده"}</span></span><span><span class="tag ${u.on?"ok":"wa"}">${u.on?"فعال":"غیرفعال"}</span> ${u.locked?'<span class="tag wa">قفل</span>':""} <button class="btn sm alt" data-ed="${u.id}">${ed?"بستن":"ویرایش"}</button> ${u.id!=me.id?`<button class="btn sm alt" data-tg="${u.id}">${u.on?"غیرفعال کن":"فعال کن"}</button>`:""} ${u.locked?`<button class="btn sm alt" data-ul="${u.id}">باز کردن قفل</button>`:""}</span></div>
  ${ed?`<div class="row" style="margin-top:8px"><input data-en="${u.id}" placeholder="نام" value="${esc(u.name)}"><input data-eu="${u.id}" placeholder="نام کاربری" value="${esc(u.user)}"><input data-ep="${u.id}" placeholder="رمز عبور جدید (اختیاری)"><select data-er="${u.id}">${Object.entries(ROLES).map(([k,v])=>`<option value="${k}" ${k==u.role?"selected":""}>${v}</option>`).join("")}</select></div><div class="err" data-ee="${u.id}"></div><button class="btn sm" data-es="${u.id}">ذخیره</button>`:""}
  </div>`}).join("")}
  <hr style="border:0;border-top:1px solid var(--line);margin:14px 0"><div class="row"><input id="nn" placeholder="نام و نام خانوادگی"><input id="nu" placeholder="نام کاربری"><input id="np" placeholder="رمز عبور"><select id="nr">${Object.entries(ROLES).map(([k,v])=>`<option value="${k}" ${k=="expert"?"selected":""}>${v}</option>`).join("")}</select></div><button class="btn" id="nb">افزودن کاربر</button></div>`;
