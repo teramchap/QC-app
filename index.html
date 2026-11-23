@@ -572,7 +572,7 @@ function pushPlugin(){
 async function registerToken(){try{if(sb&&me&&window.__pushToken)await sb.rpc("register_device",{p_uid:me.id,p_token:window.__pushToken})}catch(e){}}
 function unregisterDevice(){try{if(sb&&window.__pushToken)sb.rpc("unregister_device",{p_token:window.__pushToken}).then(()=>{},()=>{})}catch(e){}}
 function openFromPush(d){try{if(!me||!d||!d.tab)return;window.__openGroup=d.gid?+d.gid:undefined;window.__shiftSub=d.sub||undefined;tab=d.tab;shell()}catch(e){}}
-const QC_BUILD="2026-11-15 14:00 UTC";
+const QC_BUILD="2026-11-15 18:00 UTC";
 function verCard(){
  const c=window.Capacitor;const native=!!(c&&c.isNativePlatform&&c.isNativePlatform());
  const host=location.host||"";
@@ -2245,6 +2245,7 @@ function nc(){
   return `<div class="card" data-onc="${n.id}" style="cursor:pointer;${closed?"opacity:.6":""}">${isNew?'<span class="tag wa">جدید</span> ':""}<b>${esc(n.subject)}</b> <span class="tag ${closed?"ok":"wa"}">${NCSTAGE[n.stage]||n.stage}</span><div class="meta">${fd(n.at,1)}</div></div>`;
  }).join(""):'<p class="meta">موردی برای نمایش نیست.</p>'}
  ${me.role=="manager"?ncReport():""}`;
+ $("#v").insertAdjacentHTML("afterbegin",backBtn());
  if(can("nc"))$("#ncnew").onclick=()=>openNcModal(others);
  document.querySelectorAll("[data-onc]").forEach(c=>c.onclick=()=>{window.__openNc=+c.dataset.onc;nc()});
 }
@@ -2351,8 +2352,9 @@ function complaints(){
    $("#v").innerHTML=`<button class="btn sm alt" id="cxback" style="margin-bottom:12px">→ بازگشت</button>
    <div class="card"><h3>${esc(c.subject)}</h3><p>${escn(c.text)}</p>
    ${c.images&&c.images.length?`<div class="pimgs">${c.images.map((im,i)=>`<div class="pimg" data-cmi="${i}" style="cursor:pointer"><img src="${im}" alt="" loading="lazy" onerror="this.classList.add('bad')"></div>`).join("")}</div>`:""}
-   <div class="meta">${esc(uname(c.by))} · ${fd(c.at,1)}</div></div>`;
+   <div class="meta">${esc(uname(c.by))} · ${fd(c.at,1)}</div>${cxCan(c)?'<div class="row" style="flex-wrap:nowrap;margin-top:10px"><button class="btn sm alt" id="cxedit" style="min-width:0">ویرایش</button><button class="btn sm alt" id="cxdel" style="min-width:0">حذف</button></div>':""}</div>`;
    $("#cxback").onclick=()=>{window.__openComplaint=null;complaints()};
+   cxBind(c);
    document.querySelectorAll("[data-cmi]").forEach(el=>el.onclick=()=>openMediaViewer(c.images.map(u=>({url:u,by:c.by,at:c.at})),+el.dataset.cmi));
    return;
   }
@@ -2362,7 +2364,50 @@ function complaints(){
  $("#v").innerHTML=`<div class="row" style="align-items:center"><h3 style="flex:1;margin:0">شکایات</h3>${can("complaint")?`<button class="btn sm" id="cxnew" style="flex:0 0 auto">+ افزودن شکایت</button>`:""}</div>
  ${list.length?list.map(c=>`<div class="card" data-oc="${c.id}" style="cursor:pointer">${!S.complaintSeen[c.id+":"+me.id]?'<span class="tag wa">جدید</span> ':""}<b>${esc(c.subject)}</b><div class="meta">${esc(uname(c.by))} · ${fd(c.at,1)}</div></div>`).join(""):'<p class="meta">شکایتی ثبت نشده است.</p>'}`;
  document.querySelectorAll("[data-oc]").forEach(d=>d.onclick=()=>{window.__openComplaint=+d.dataset.oc;complaints()});
+ $("#v").insertAdjacentHTML("afterbegin",backBtn());
  const nb=document.getElementById("cxnew");if(nb)nb.onclick=()=>openComplaintModal();
+}
+function cxCan(c){return me.role==="manager"||c.by===me.id}
+function cxBind(c){
+ const e=document.getElementById("cxedit"),d=document.getElementById("cxdel");
+ if(e)e.onclick=()=>openComplaintEdit(c);
+ if(d)d.onclick=()=>{
+  if(!confirm("این شکایت برای همیشه حذف شود؟"))return;
+  (c.images||[]).forEach(removeStored);
+  S.complaints=S.complaints.filter(x=>x.id!==c.id);
+  window.__openComplaint=null;save("complaints");complaints();
+ };
+}
+function openComplaintEdit(c){
+ let imgs=(c.images||[]).slice();
+ const orig=imgs.slice(),added=[];
+ openModal(`<h3>ویرایش شکایت</h3><input id="mxs" placeholder="موضوع" value="${esc(c.subject)}"><textarea id="mxt" rows="4" placeholder="متن شکایت">${esc(c.text)}</textarea><div id="mxth" class="pimgs"></div><input type="file" id="mxi" accept="image/*" multiple><div class="err" id="mxe"></div><button class="btn" id="mxb" style="width:100%">ذخیره</button>`);
+ const th=document.getElementById("mxth");
+ function render(){
+  th.innerHTML=imgs.map((u,i)=>`<div class="pimg"><img src="${u}" alt=""><button type="button" class="pdelimg" data-mxr="${i}" aria-label="حذف عکس">✕</button></div>`).join("");
+  th.querySelectorAll("[data-mxr]").forEach(b=>b.onclick=()=>{imgs.splice(+b.dataset.mxr,1);render()});
+ }
+ render();
+ document.getElementById("mxi").onchange=async(e)=>{
+  const files=[...e.target.files],st=document.getElementById("mxe");
+  if(!files.length)return;
+  if(imgs.length+files.length>10){st.textContent="هر شکایت حداکثر ۱۰ عکس دارد.";e.target.value="";return}
+  st.textContent="در حال آپلود…";
+  try{
+   const ups=await Promise.all(files.map(x=>uploadImage(x,{compress:true})));
+   ups.filter(Boolean).forEach(u=>{imgs.push(u);added.push(u)});
+   st.textContent="";
+  }catch(err){st.textContent="آپلود ناموفق بود"}
+  e.target.value="";render();
+ };
+ document.getElementById("mxb").onclick=()=>{
+  const su=$("#mxs").value.trim(),tx=$("#mxt").value.trim();
+  if(!su||!tx)return $("#mxe").textContent="موضوع و متن را وارد کنید.";
+  const keep=new Set(imgs);
+  [...orig,...added].forEach(u=>{if(!keep.has(u))removeStored(u)});
+  c.subject=su;c.text=tx;c.images=imgs;c.editedAt=Date.now();
+  save("complaints");closeModal();complaints();
+ };
 }
 function openComplaintModal(){
  openModal(`<h3>ثبت شکایت جدید</h3><input id="mcs" placeholder="موضوع"><textarea id="mct" rows="3" placeholder="متن شکایت"></textarea><input type="file" id="mci" accept="image/*" multiple><div class="err" id="mce"></div><button class="btn sm" id="mcb">ثبت</button>`);
@@ -2540,6 +2585,7 @@ function ncc(){
   {go:"nc",title:"عدم انطباق‌ها",sub:"ثبت و پیگیری موارد عدم انطباق",icon:'<svg viewBox="0 0 24 24"><path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17v.5"/></svg>',badge:ncNewCount()},
   {go:"complaints",title:"شکایات",sub:"ثبت و مشاهده شکایات",icon:'<svg viewBox="0 0 24 24"><path d="M6 3v18M6 4h12l-2 3.5 2 3.5H6"/></svg>',badge:complaintsUnseen()}]);
  document.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>{resetNav();tab=b.dataset.go;shell()});
+ $("#v").insertAdjacentHTML("afterbegin",backBtn());
 }
 function tools(){
  if(window.__toolSub==="units")return units();
